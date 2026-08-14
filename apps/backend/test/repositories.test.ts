@@ -133,6 +133,33 @@ describe("SQLite repositories", () => {
     expect(repository.listActive()).toEqual([taskFixture]);
   });
 
+  it("atomically replaces a task's incoming dependency edges", () => {
+    const repository = new SqliteTaskRepository(database());
+    repository.save(taskFixture);
+    repository.save({ ...taskFixture, id: "predecessor-a" });
+    repository.save({ ...taskFixture, id: "predecessor-b" });
+    repository.saveWithDependencies({ ...taskFixture, title: "Updated task" }, ["predecessor-a"]);
+    repository.saveWithDependencies({ ...taskFixture, title: "Updated again" }, ["predecessor-b"]);
+
+    expect(repository.get(taskFixture.id)?.title).toBe("Updated again");
+    expect(repository.listDependencies()).toEqual([
+      { predecessorTaskId: "predecessor-b", successorTaskId: "task-1" },
+    ]);
+  });
+
+  it("rolls back both the task and its old edges when a predecessor is missing", () => {
+    const repository = new SqliteTaskRepository(database());
+    repository.save(taskFixture);
+    repository.save({ ...taskFixture, id: "predecessor-a" });
+    repository.saveWithDependencies(taskFixture, ["predecessor-a"]);
+
+    expect(() => repository.saveWithDependencies({ ...taskFixture, title: "Should not persist" }, ["missing-predecessor"])).toThrow();
+    expect(repository.get(taskFixture.id)).toEqual(taskFixture);
+    expect(repository.listDependencies()).toEqual([
+      { predecessorTaskId: "predecessor-a", successorTaskId: "task-1" },
+    ]);
+  });
+
   it("creates Course rows with the complete SPEC fields", () => {
     const connection = database();
     connection.prepare("INSERT INTO courses (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")

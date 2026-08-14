@@ -9,6 +9,7 @@
     "dev": "tsx watch src/server.ts"
   },
   "dependencies": {
+    "@js-temporal/polyfill": "^0.5.1",
     "better-sqlite3": "^12.4.1",
     "fastify": "^5.3.0"
   },
