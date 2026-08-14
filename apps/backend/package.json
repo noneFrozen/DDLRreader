@@ -1,0 +1,19 @@
+{
+  "name": "@ddl-radar/backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.3.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

@@ -1,2 +1,7 @@
-.worktrees/
-
+node_modules/
+dist/
+*.tsbuildinfo
+.env
+*.log
+.DS_Store
+Thumbs.db
