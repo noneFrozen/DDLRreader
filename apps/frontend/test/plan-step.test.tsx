@@ -63,7 +63,10 @@ describe("PlanStep", () => {
     await user.click(screen.getByRole("button", { name: "移动 软件工程大作业" }));
 
     await waitFor(() => expect(api.patchScheduleBlock).toHaveBeenCalled());
-    expect(screen.getByLabelText("开始时间（软件工程大作业）")).toHaveValue("2026-08-18T18:00");
+    const originalStart = new Date("2026-08-18T10:00:00.000Z");
+    const pad = (value: number) => String(value).padStart(2, "0");
+    const expectedStart = `${originalStart.getFullYear()}-${pad(originalStart.getMonth() + 1)}-${pad(originalStart.getDate())}T${pad(originalStart.getHours())}:${pad(originalStart.getMinutes())}`;
+    expect(screen.getByLabelText("开始时间（软件工程大作业）")).toHaveValue(expectedStart);
     expect(screen.getByRole("alert")).toHaveTextContent("高等数学作业");
   });
 
