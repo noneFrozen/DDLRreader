@@ -626,6 +626,8 @@ git commit -m "feat(domain): generate deterministic schedules"
 - Consumes: `PlanningInput`, previous `ScheduleBlock[]`, and progress changes.
 - Produces: `replan(input: ReplanInput): PlanResult` and `applyProgress(task: Task, completedMinutes: number): ProgressResult`.
 
+`ReplanInput.tasks[].remainingMinutes` is the current remaining work after all previously reported progress has already been applied. A completed frozen block is preserved as history but never subtracted from `remainingMinutes` again. Started blocks and future user-locked, non-completed blocks represent reserved remaining work, so their duration is subtracted once, capped at the task's current remaining minutes.
+
 - [ ] **Step 1: Write the failing frozen-block test**
 
 ```ts
@@ -641,7 +643,7 @@ it("preserves completed, started, and locked blocks exactly", () => {
 Run: `npm --workspace @ddl-radar/domain test -- replan.test.ts`  
 Expected: FAIL because `replan` is missing.
 
-Build a new `PlanningInput` whose availability excludes frozen intervals and whose task minutes exclude completed work and future frozen allocations; call `generatePlan`, then merge and sort frozen plus new blocks.
+Build a new `PlanningInput` whose availability excludes frozen intervals and whose task minutes exclude only started and future user-locked, non-completed allocations; call `generatePlan`, then merge and sort frozen plus new blocks. Preserve completed blocks without subtracting them from current remaining work. Add a regression fixture where a task has `remainingMinutes: 30` and a historical completed 60-minute block; replanning must still schedule or report exactly 30 remaining minutes, not zero.
 
 - [ ] **Step 3: Add and satisfy progress boundary tests**
 
@@ -649,6 +651,8 @@ Build a new `PlanningInput` whose availability excludes frozen intervals and who
 expect(applyProgress(taskWithMinutes(90), 120)).toEqual({ remainingMinutes: 0, appliedMinutes: 90, overflowMinutes: 30 });
 expect(() => applyProgress(taskWithMinutes(90), -30)).toThrow("completedMinutes must be non-negative");
 ```
+
+`applyProgress` is the sole operation in this domain task that reduces current remaining work for newly reported completed minutes. Replanning must not apply the same completion twice.
 
 - [ ] **Step 4: Verify and commit**
 
