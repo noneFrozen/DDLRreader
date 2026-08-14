@@ -868,7 +868,7 @@ git commit -m "feat(api): manage tasks and availability"
 - When `completedMinutes` is present, apply domain `applyProgress`, update the task remaining/status and block state, and return overflow details. Run the task and block writes in one injected database transaction so failure cannot partially apply progress. Lock/status-only updates do not change task minutes.
 - ICS export reads the requested stored plan and its task titles, converts instants to the availability definition timezone, uses stable `block.id@ddl-radar.local` UIDs and plan `createdAt` for deterministic `DTSTAMP`, emits CRLF, RFC 5545 escaping and 75-octet folding, `text/calendar; charset=utf-8`, and attachment filename `ddl-radar-plan.ics`. Missing plan/task data returns a structured error, never a stack.
 
-- [ ] **Step 1: Write the failing course example analysis test**
+- [x] **Step 1: Write the failing course example analysis test**
 
 Build an API fixture with three named tasks and availability that produces a 150-minute shortage by Thursday. Assert status 200 and:
 
@@ -883,13 +883,13 @@ expect(response.json()).toMatchObject({
 Run: `npm --workspace @ddl-radar/backend test -- analysis-api.test.ts`  
 Expected: FAIL with route not found.
 
-- [ ] **Step 2: Implement analysis and plan orchestration**
+- [x] **Step 2: Implement analysis and plan orchestration**
 
 Load tasks and the `AvailabilityDefinition` through repositories, resolve it through the Task 7 application service, construct one `PlanningInput`, and call domain functions without duplicating risk rules. `POST /api/plans` requires `{ allowRisk: boolean }`; reject red analysis with 409 unless `allowRisk` is true. Persist `unscheduledMinutes` alongside the plan response.
 
 Before route orchestration, write repository RED tests for `listPlanning`, composite schedule-block identities across plan versions, and the v2→v3 data-preserving migration. Then implement the schema/repository changes above.
 
-- [ ] **Step 3: Write and satisfy move-conflict tests**
+- [x] **Step 3: Write and satisfy move-conflict tests**
 
 Assert moving a block over a locked block returns 409:
 
@@ -905,7 +905,7 @@ The repository remains unchanged after the response.
 
 Also cover unavailable-time moves, after-deadline confirmation, progress overflow, atomic task/block rollback, missing block/plan, frozen-block preservation during replan, deterministic version increments, empty availability, and expired replan ranges.
 
-- [ ] **Step 4: Write a failing ICS escaping and UID test**
+- [x] **Step 4: Write a failing ICS escaping and UID test**
 
 ```ts
 expect(ics).toContain("SUMMARY:软件工程\\,大作业");
@@ -914,11 +914,11 @@ expect(exportAgain).toContain("UID:block-1@ddl-radar.local");
 expect(ics).toContain("TZID=Asia/Shanghai");
 ```
 
-- [ ] **Step 5: Implement RFC 5545-safe export**
+- [x] **Step 5: Implement RFC 5545-safe export**
 
 Use CRLF line endings, escape backslash/comma/semicolon/newline, fold lines longer than 75 octets, generate stable UIDs from block IDs, and return `text/calendar; charset=utf-8` with a fixed safe filename `ddl-radar-plan.ics`.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/backend test && npm --workspace @ddl-radar/backend run typecheck`  
 Expected: all backend tests pass.
@@ -927,6 +927,8 @@ Expected: all backend tests pass.
 git add packages/domain/src/types.ts apps/backend/src/app.ts apps/backend/src/db apps/backend/src/repositories apps/backend/src/routes apps/backend/src/services apps/backend/test
 git commit -m "feat(api): expose analysis plans and calendar export"
 ```
+
+**Completed 2026-08-14:** `2bccda6`, `50d182b`, and `405c1d5`. Review remediation added stable locked-conflict priority, strict UTC validation, atomic progress rollback, complete planning/replan boundary coverage, schema v3 composite identities, and RFC 5545 regression evidence. Independent review approved with one deferred Minor: semantic-equivalent UTC strings with different formatting can be misclassified as a move. Controller verification: backend 62/62 tests, domain 37/37 tests, both typechecks, and `git diff --check` passed.
 
 ---
 
