@@ -543,7 +543,7 @@ git commit -m "feat(domain): analyze cumulative deadline conflicts"
 - Consumes: `PlanningInput`, normalized blocks, dependencies, and `AnalysisResult`.
 - Produces: `generatePlan(input: PlanningInput): PlanResult` with `{ blocks: ScheduleBlock[]; unscheduled: UnscheduledWork[]; explanation: AllocationExplanation[] }`, and `DependencyCycleError` for invalid cyclic dependency input.
 
-- [ ] **Step 1: Write the failing stable-order test**
+- [x] **Step 1: Write the failing stable-order test**
 
 ```ts
 it("uses slack, deadline, priority, then creation time as stable tie breakers", () => {
@@ -555,12 +555,12 @@ it("uses slack, deadline, priority, then creation time as stable tie breakers", 
 });
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [x] **Step 2: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/domain test -- planner.test.ts`  
 Expected: FAIL because `generatePlan` is missing.
 
-- [ ] **Step 3: Implement candidate scoring and chronological allocation**
+- [x] **Step 3: Implement candidate scoring and chronological allocation**
 
 Use this comparator shape and add the task ID as the final defensive tie-breaker:
 
@@ -576,7 +576,7 @@ type CandidateScore = {
 
 At each chronological availability block, consider only tasks whose predecessors are complete in the simulated allocation. Sort by `slackBlocks`, `deadlineMs`, descending `priorityRank`, `createdAtMs`, then `taskId`.
 
-- [ ] **Step 4: Add failing dependency and non-splittable tests**
+- [x] **Step 4: Add failing dependency and non-splittable tests**
 
 ```ts
 expect(blocksFor(result, "presentation")[0].startAt >= blocksFor(result, "research").at(-1)!.endAt).toBe(true);
@@ -586,11 +586,11 @@ expect(minutesFor(blocksFor(result, "exam")[0])).toBe(120);
 
 Also assert a non-splittable 120-minute task with only separated 60-minute windows appears in `unscheduled` with `{ reason: "NO_CONSECUTIVE_WINDOW", minutes: 120 }`.
 
-- [ ] **Step 5: Implement dependency release and consecutive-window placement**
+- [x] **Step 5: Implement dependency release and consecutive-window placement**
 
 Reject cycles by throwing `DependencyCycleError`. The error exposes `readonly code = "DEPENDENCY_CYCLE"` and a deterministically sorted `readonly taskIds: string[]`; its message is `task dependencies contain a cycle`. This keeps `generatePlan`'s successful return type as `PlanResult`. Place ready non-splittable tasks into the earliest consecutive window that finishes before their deadline, ordered by the same stable comparator; then fill remaining blocks with splittable tasks.
 
-- [ ] **Step 6: Prove minute conservation**
+- [x] **Step 6: Prove minute conservation**
 
 Add a test asserting for every normalized planner-facing task:
 
@@ -598,7 +598,7 @@ Add a test asserting for every normalized planner-facing task:
 expect(scheduledMinutes(result, task.id) + unscheduledMinutes(result, task.id)).toBe(task.remainingMinutes);
 ```
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/domain test && npm --workspace @ddl-radar/domain run typecheck`  
 Expected: planner, conflict, and time tests pass.
@@ -607,6 +607,8 @@ Expected: planner, conflict, and time tests pass.
 git add packages/domain/src/planner.ts packages/domain/src/index.ts packages/domain/test/planner.test.ts
 git commit -m "feat(domain): generate deterministic schedules"
 ```
+
+**Completed 2026-08-14:** `df2bee5 feat(domain): generate deterministic schedules`. Independent task review: spec compliant and quality approved with no findings; Task 7 remains responsible for enforcing the documented normalized-minute input boundary.
 
 ---
 
