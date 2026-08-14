@@ -28,11 +28,11 @@
 
 Before merging implementation work, use a different agent type from the primary developer in a fresh session with only `SPEC.md` and `PLAN.md`.
 
-- [ ] Create an isolated worktree named `cold-start-validation` from the current documentation commit.
-- [ ] Ask the fresh agent to implement Task 1 and the first red–green cycle of Task 3, with the instruction: “Pause and ask when the documents are ambiguous; do not infer missing requirements.”
-- [ ] Record every question, divergent interpretation, and resulting SPEC/PLAN correction in `SPEC_PROCESS.md`.
-- [ ] Discard or separately review the validation worktree; do not silently merge it into the main implementation branch.
-- [ ] Commit any documentation corrections before starting Task 1 in the real implementation worktree.
+- [x] Create an isolated worktree `opencode-cold-start` from documentation commit `dd37792`.
+- [x] Ask a fresh OpenCode agent to implement Tasks 1–2 with the instruction: “Pause and ask when the documents are ambiguous; do not infer missing requirements.”
+- [x] Record every question, divergent interpretation, and resulting SPEC/PLAN correction in `SPEC_PROCESS.md`.
+- [x] Review the validation worktree separately before reusing any implementation; preserve the original agent commits and record the human correction as its own commit.
+- [x] Commit documentation corrections before creating the real `codex/implementation` branch.
 
 ## Planned File Structure
 
@@ -76,7 +76,7 @@ Before merging implementation work, use a different agent type from the primary 
 
 ## Cross-Task Type Contracts
 
-These names and fields are fixed across worktrees. Task 2 places domain types in `packages/domain/src/types.ts`; Task 6 places repository interfaces next to their implementations.
+These names and fields are fixed across worktrees. Task 2 places domain types and repository contracts in `packages/domain/src/types.ts`; Task 6 implements those contracts without redeclaring them.
 
 ```ts
 export type IsoUtc = string;
@@ -305,7 +305,7 @@ git commit -m "chore: bootstrap DDL Radar workspaces"
 - Create: `packages/domain/test/time.test.ts`
 
 **Interfaces:**
-- Produces: `Task`, `AvailabilityBlock`, `ScheduleBlock`, `PlanningInput`, `Clock`, `toBlockCount(minutes)`, `effectiveCapacityBlocks(blocks, bufferRatio)`.
+- Produces: `Task`, `AvailabilityBlock`, `ScheduleBlock`, `PlanningInput`, `Clock`, `TaskRepository`, `AvailabilityRepository`, `PlanRepository`, `toBlockCount(minutes)`, `effectiveCapacityBlocks(blocks, bufferRatio)`.
 - Consumes: No application interfaces.
 
 - [ ] **Step 1: Create the domain workspace with its first source and test files**
@@ -538,7 +538,7 @@ git commit -m "feat(domain): analyze cumulative deadline conflicts"
 
 **Interfaces:**
 - Consumes: `PlanningInput`, normalized blocks, dependencies, and `AnalysisResult`.
-- Produces: `generatePlan(input: PlanningInput): PlanResult` with `{ blocks: ScheduleBlock[]; unscheduled: UnscheduledWork[]; explanation: AllocationExplanation[] }`.
+- Produces: `generatePlan(input: PlanningInput): PlanResult` with `{ blocks: ScheduleBlock[]; unscheduled: UnscheduledWork[]; explanation: AllocationExplanation[] }`, and `DependencyCycleError` for invalid cyclic dependency input.
 
 - [ ] **Step 1: Write the failing stable-order test**
 
@@ -585,7 +585,7 @@ Also assert a non-splittable 120-minute task with only separated 60-minute windo
 
 - [ ] **Step 5: Implement dependency release and consecutive-window placement**
 
-Reject cycles with `{ code: "DEPENDENCY_CYCLE", taskIds }`. Place ready non-splittable tasks into the earliest consecutive window that finishes before their deadline, ordered by the same stable comparator; then fill remaining blocks with splittable tasks.
+Reject cycles by throwing `DependencyCycleError`. The error exposes `readonly code = "DEPENDENCY_CYCLE"` and a deterministically sorted `readonly taskIds: string[]`; its message is `task dependencies contain a cycle`. This keeps `generatePlan`'s successful return type as `PlanResult`. Place ready non-splittable tasks into the earliest consecutive window that finishes before their deadline, ordered by the same stable comparator; then fill remaining blocks with splittable tasks.
 
 - [ ] **Step 6: Prove minute conservation**
 
@@ -672,8 +672,8 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 - Create: `apps/backend/test/repositories.test.ts`
 
 **Interfaces:**
-- Produces: `TaskRepository`, `AvailabilityRepository`, `PlanRepository`, `openDatabase(path)`, `migrate(database)`.
-- Consumes: domain entity types from Task 2.
+- Produces: `SqliteTaskRepository`, `SqliteAvailabilityRepository`, `SqlitePlanRepository`, `openDatabase(path)`, `migrate(database)`.
+- Consumes: domain entity types and `TaskRepository`, `AvailabilityRepository`, `PlanRepository` contracts from Task 2.
 
 - [ ] **Step 1: Write failing repository round-trip and transaction tests**
 
@@ -703,7 +703,7 @@ Create tables matching SPEC entities, foreign keys, unique dependency pairs, pla
 
 - [ ] **Step 4: Implement focused repositories**
 
-Repositories accept a `better-sqlite3` database in their constructor. Convert rows to domain values at one mapping boundary. `PlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
+Repository classes accept a `better-sqlite3` database in their constructor and implement the corresponding domain contracts without redeclaring those interfaces. Convert rows to domain values at one mapping boundary. `SqlitePlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
 
 - [ ] **Step 5: Verify and commit**
 

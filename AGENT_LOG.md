@@ -8,4 +8,5 @@
 | 2026-08-14 | Task 1 | OpenCode 1.18.18 / deepseek-v4-pro | OpenCode 报告按 Superpowers 流程执行；具体技能日志未提供 | 仅 `SPEC.md`、`PLAN.md`；实现 Task 1–2；有歧义即暂停 | 根测试、typecheck、build 报告退出码 0；commit 中包含 backend health test 与最小 frontend | OpenCode 自行移除 backend `rootDir` 解决 test 不在 rootDir；但测试与实现同时写入，缺少 RED 证据 | `f5752c7` |
 | 2026-08-14 | Task 2 | OpenCode 1.18.18 / deepseek-v4-pro | `test-driven-development` 的红—绿行为有命令证据 | 同上 | RED：6 tests failed，退出码 1；GREEN：15 tests passed，typecheck 0 errors | 无规格问询；未进行口头补充 | `bff5200` |
 | 2026-08-14 | Task 1–2 复核 | Codex | `verification-before-completion` | 不采信代理完成声明，检查 diff 并重跑根命令 | 16 tests passed；三个 workspace typecheck 通过；普通 Windows 环境 build 退出 0 | 发现 `.gitignore` 覆盖导致 `.worktrees/` 丢失，单独恢复并修订 PLAN；保留 Task 1 缺少 RED 的事实 | `2df21e4`；过程文档 commit 见本条之后的 Git 历史 |
+| 2026-08-14 | 正式实现预检 | Codex + 用户 | `using-git-worktrees`、`subagent-driven-development` | 完整扫描 PLAN 的跨 Task 契约与历史门禁 | 用户确认三项裁定：冷启动记录按实际 Task 1–2；循环依赖使用结构化 `DependencyCycleError`；repository contracts 以 domain 为唯一来源 | 在 Task 3 派发前修订 PLAN，避免后续智能体自行猜测 | 见紧随本条的 PLAN 修订 commit |
 
