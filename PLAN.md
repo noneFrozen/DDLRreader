@@ -1088,6 +1088,15 @@ git commit -m "feat(ui): capture availability and course tasks"
 - Produces: analysis and plan views, progress update, lock/move controls, ICS download action.
 - Consumes: typed endpoints from Task 8.
 
+**Binding Task 11 contracts:**
+- Extend `apps/frontend/src/api/client.ts` with typed methods for `POST /api/analysis`, `POST /api/plans`, `PATCH /api/schedule-blocks/:id`, and `GET /api/plans/:id/export.ics`. Keep injected fetch support; for ICS return `{ blob, filename }`, parsing `content-disposition` and defaulting to `ddl-radar-plan.ics`.
+- Analysis requests use `{ planningDays: 7, bufferRatio: 0.1 }` by default. Create-plan requests use the same planning inputs plus `allowRisk`. A red analysis shows “生成尽力计划” and opens a confirmation dialog before sending `allowRisk: true`; yellow/green show “生成可执行计划” and send without the red confirmation.
+- Incomplete analysis renders every `issues[]` item as visible text and does not render a generation button. Ready analysis renders risk, nodes, first conflict shortage, and involved task titles by mapping `taskIds` through the saved task list.
+- `PlanStep` receives the latest plan response and current tasks. Schedule blocks are grouped by local day headings. Buttons expose task title, time range, status, and locked state; toggling lock calls `PATCH /api/schedule-blocks/:id` with `{ locked: true|false }` and updates the accessible label to include `已锁定` when true.
+- Completing progress uses `PATCH /api/schedule-blocks/:id` with `{ completedMinutes: 60 }`, updates the returned block/task state, and keeps overflow/progress messages visible.
+- Keyboard movement is implemented with start/end datetime controls for each block, not pointer-only drag. If the PATCH returns `409 SCHEDULE_CONFLICT`, restore the previous displayed times and show the conflicting block's task title by resolving `details.conflictingBlockId` against the current plan. If the conflict cannot be resolved, show the server message.
+- Display `plan.unscheduledMinutes` in a persistent warning panel whenever it is greater than 0. Do not remove the availability/task entry steps; users must be able to go back and edit inputs.
+
 - [ ] **Step 1: Write the failing conflict explanation test**
 
 ```tsx
