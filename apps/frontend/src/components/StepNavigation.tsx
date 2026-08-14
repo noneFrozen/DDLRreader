@@ -1,18 +1,19 @@
 type StepNavigationProps = {
   currentStep: number;
+  unlockedStep?: number;
   onStepChange: (step: number) => void;
 };
 
 const steps = ["可用时间", "任务录入", "冲突分析", "生成计划"];
 
-export function StepNavigation({ currentStep, onStepChange }: StepNavigationProps) {
+export function StepNavigation({ currentStep, unlockedStep = currentStep, onStepChange }: StepNavigationProps) {
   return (
     <nav className="step-navigation panel" aria-label="规划步骤">
       <p className="section-label">Flow</p>
       <div className="step-navigation__list">
         {steps.map((label, index) => {
           const step = index + 1;
-          const unavailable = step > currentStep;
+          const unavailable = step > unlockedStep;
           return (
             <button
               key={label}

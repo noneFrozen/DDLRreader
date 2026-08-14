@@ -138,6 +138,29 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-r
 .task-card p { margin: 0; font-weight: 700; }
 .task-card small { color: var(--color-text-accessible); }
 
+.entry-step { padding: var(--space-6); }
+.entry-step h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 3vw, 2.7rem); line-height: 1.25; }
+.entry-step > p:not(.section-label):not(.field-error) { margin: var(--space-2) 0 var(--space-5); color: var(--color-text-accessible); }
+.entry-field { display: grid; gap: var(--space-1); margin-top: var(--space-3); font-weight: 700; }
+.entry-field input, .entry-field select { width: 100%; min-height: var(--control-min-height); padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 12px; color: var(--color-fg); font: inherit; background: var(--color-surface); }
+.entry-field input:focus-visible, .entry-field select:focus-visible, .entry-checkbox input:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.availability-days { display: grid; gap: var(--space-2); margin-top: var(--space-5); }
+.availability-day { padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-organic-sm); }
+.availability-day > label, .entry-checkbox, .dependency-picker label { display: flex; align-items: center; gap: var(--space-2); font-weight: 700; }
+.availability-times { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-3); }
+.availability-times label { display: grid; gap: var(--space-1); font-size: .9rem; }
+.availability-times input { min-height: var(--control-min-height); padding: 8px; border: 1px solid var(--color-border); border-radius: 12px; font: inherit; }
+.entry-submit { margin-top: var(--space-5); padding: 10px 18px; border: 1px solid var(--color-accent); border-radius: 999px; color: var(--color-surface); font-weight: 700; background: var(--color-accent); }
+.entry-submit:disabled { opacity: .65; cursor: wait; }
+.field-error { margin: var(--space-2) 0 0; color: var(--color-risk-high); font-size: .9rem; font-weight: 700; }
+.task-form { display: grid; gap: var(--space-1); }
+.entry-checkbox { margin-top: var(--space-4); }
+.dependency-picker { display: grid; gap: var(--space-2); margin: var(--space-4) 0 0; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-organic-sm); }
+.course-fixtures { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-4); }
+.course-fixtures span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--color-border); font-size: .8rem; }
+.course-fixtures i { width: 9px; height: 9px; border-radius: 50%; }
+.saved-tasks { margin-top: var(--space-5); }
+
 @media (min-width: 768px) and (max-width: 1023px) {
   .app-shell__layout { grid-template-columns: 220px minmax(0, 1fr); grid-template-areas: "flow main" "aside aside"; }
   .app-shell__aside { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
@@ -148,6 +171,7 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-r
   .app-shell__header { align-items: flex-start; flex-direction: column; }
   .app-shell__layout { grid-template-columns: minmax(0, 1fr); grid-template-areas: "flow" "main" "aside"; }
   .workspace__analysis, .summary-grid { grid-template-columns: minmax(0, 1fr); }
+  .availability-times { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (prefers-reduced-motion: reduce) {
