@@ -119,7 +119,22 @@
 
 ### 4.4 产出与预期差距
 
-冷启动没有形成可直接合并且带 commit 证据的 1–2 个完整 Task，因此实现产出低于课程所述理想结果；但它准确暴露了四个会阻塞执行的 PLAN 缺口和一个关键语义歧义。修订后仍应重新开启无历史的新会话，从新的文档 commit 再执行 Task 1–2，记录实际命令输出、暂停问题与 commit，才能把冷启动闭环视为完全完成。
+首次冷启动没有形成可直接合并且带 commit 证据的 1–2 个完整 Task，因此当时的实现产出低于课程所述理想结果；但它准确暴露了四个会阻塞执行的 PLAN 缺口和一个关键语义歧义。基于这些修订，随后进行了下面记录的第二次陌生会话复跑。
+
+### 4.5 修订后的陌生智能体复跑
+
+2026-08-14，在独立 worktree `C:\Users\Admin\Desktop\Application\.worktrees\opencode-cold-start` 和分支 `codex/opencode-cold-start` 中启动全新 OpenCode 1.18.18 会话，底层模型为 `deepseek-v4-pro (njuse/deepseek-v4-pro)`，起始 commit 为 `dd37792`。提示词要求只读取 `SPEC.md` 与 `PLAN.md`，只实现 Task 1–2，遇到歧义立即暂停。
+
+OpenCode 没有提出新的规格问题，产出两个独立 commit：
+
+- `f5752c7 chore: bootstrap DDL Radar workspaces`：Task 1 的测试、类型检查和构建均报告退出码 0，但实现与测试一次性写入，首次测试即通过，未保留 PLAN 要求的 RED 阶段。这是流程偏差，不能记录成完整 TDD 红—绿证据。
+- `bff5200 feat(domain): define planning types and time blocks`：Task 2 的 RED 为 6 个测试因函数不存在而失败、退出码 1；实现后 15 个测试通过且 typecheck 退出码 0，具有完整红—绿证据。
+
+主智能体随后独立检查提交并重跑验证：根 `npm test` 共通过 backend 1 个与 domain 15 个测试；根 `npm run typecheck` 的三个 workspace 均无错误；根 `npm run build` 在 Codex 受限沙箱中因 esbuild 无权读取上级路径而失败，在获准的普通 Windows 环境中以同一代码和命令重跑后退出码 0，确认属于验证环境权限差异。
+
+代码评审发现 OpenCode 在 Task 1 中整体覆盖 `.gitignore`，删除了冷启动准备阶段已有的 `.worktrees/`。原因是 PLAN 仍将该文件标为 “Create”，没有说明准备阶段已经存在。主智能体没有改写原始 OpenCode commit，而是在同一分支增加 `2df21e4 fix: preserve worktree ignore rule`，并将 PLAN 改为 “Modify” 且明确要求保留已有规则。这是一次有证据的人工审查与修正。
+
+最终判断：Task 1–2 的功能结果通过独立验证，冷启动实现目标已完成；Task 1 的 TDD RED 证据缺失作为明确流程偏差保留，不追溯伪造。原始回报与复核结果保存在 `evidence/cold-start/opencode-task-1-2-result.md`。
 
 ## 5. 对 brainstorming 的阶段性反思
 

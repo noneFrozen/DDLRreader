@@ -196,7 +196,7 @@ export interface PlanRepository {
 - Create: `apps/frontend/index.html`
 - Create: `apps/frontend/src/main.tsx`
 - Create: `apps/frontend/src/app/App.tsx`
-- Create: `.gitignore`
+- Modify: `.gitignore`
 
 **Interfaces:**
 - Produces: `buildApp(): Promise<FastifyInstance>` and workspace scripts `test`, `typecheck`, `build`.
@@ -229,7 +229,7 @@ Root `package.json` must expose one-command verification:
 }
 ```
 
-Task 1 does not create the domain workspace or any empty `src/` tree. Root `tsconfig.base.json` contains shared `compilerOptions` only and has no project `references`; each workspace `tsconfig.json` extends it directly, so `composite: true` is unnecessary. Backend defines `test`, `typecheck`, and `build` scripts because it already contains source and a health test. Frontend defines `dev`, `typecheck`, and `build`, but does not add a `test` script until its first test is created in Task 9. Therefore root `npm test` runs the backend suite only and exits 0 without relying on `--passWithNoTests`.
+Task 1 does not create the domain workspace or any empty `src/` tree. Root `tsconfig.base.json` contains shared `compilerOptions` only and has no project `references`; each workspace `tsconfig.json` extends it directly, so `composite: true` is unnecessary. Backend defines `test`, `typecheck`, and `build` scripts because it already contains source and a health test. Frontend defines `dev`, `typecheck`, and `build`, but does not add a `test` script until its first test is created in Task 9. Therefore root `npm test` runs the backend suite only and exits 0 without relying on `--passWithNoTests`. Extend the existing `.gitignore` rather than replacing it: preserve `.worktrees/` and add `node_modules/`, `dist/`, `*.tsbuildinfo`, `.env`, `*.log`, `.DS_Store`, and `Thumbs.db`.
 
 Run: `npm install`  
 Expected: `package-lock.json` is created and no workspace is missing.
