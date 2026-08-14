@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveAvailability } from "../src/services/availability.js";
+import { normalizeAvailabilityDefinition, resolveAvailability } from "../src/services/availability.js";
 
 describe("resolveAvailability", () => {
   it("merges weekly ranges, applies ordered exceptions, clips the range, and derives stable IDs", () => {
@@ -36,5 +36,19 @@ describe("resolveAvailability", () => {
     const fall = resolveAvailability({ timezone: "America/New_York", weeklyRules: [], exceptions: [{ id: "fall", date: "2026-11-01", startLocalTime: "01:00", endLocalTime: "02:00", kind: "available" }] }, "2026-11-01T04:00:00Z", "2026-11-01T08:00:00Z");
     expect(spring.map((block) => block.startAt)).toEqual(["2026-03-08T06:00:00Z", "2026-03-08T06:30:00Z"]);
     expect(fall.map((block) => block.startAt)).toEqual(["2026-11-01T05:00:00Z", "2026-11-01T05:30:00Z", "2026-11-01T06:00:00Z", "2026-11-01T06:30:00Z"]);
+  });
+
+  it("resolves normalized midnight sentinels returned by the repository", () => {
+    const definition = normalizeAvailabilityDefinition({ timezone: "Asia/Shanghai", weeklyRules: [{ id: "overnight", weekday: 1, startLocalTime: "22:00", endLocalTime: "02:00", timezone: "Asia/Shanghai" }], exceptions: [] });
+    expect(definition.weeklyRules.some((rule) => rule.endLocalTime === "24:00")).toBe(true);
+    expect(resolveAvailability(definition, "2026-03-09T13:00:00Z", "2026-03-10T18:00:00Z")).not.toEqual([]);
+  });
+
+  it("anchors 30-minute blocks to a non-integral-offset local interval", () => {
+    const blocks = resolveAvailability({
+      timezone: "Asia/Kathmandu",
+      weeklyRules: [{ id: "morning", weekday: 1, startLocalTime: "09:00", endLocalTime: "10:00", timezone: "Asia/Kathmandu" }], exceptions: [],
+    }, "2026-03-09T03:00:00Z", "2026-03-09T04:30:00Z");
+    expect(blocks.map((block) => block.startAt)).toEqual(["2026-03-09T03:15:00Z", "2026-03-09T03:45:00Z"]);
   });
 });

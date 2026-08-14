@@ -52,4 +52,49 @@ describe("availability REST API", () => {
       fieldErrors: { timezone: "请输入有效时区", endLocalTime: "结束时间必须晚于开始时间" },
     });
   });
+
+  it("round-trips normalized overnight definitions through GET and PUT", async () => {
+    const instance = await app();
+    const saved = await instance.inject({
+      method: "PUT", url: "/api/availability",
+      payload: { timezone: "Asia/Shanghai", weeklyRules: [{ id: "overnight", weekday: 1, startLocalTime: "22:00", endLocalTime: "02:00", timezone: "Asia/Shanghai" }], exceptions: [] },
+    });
+    const stored = await instance.inject({ method: "GET", url: "/api/availability" });
+    const replaced = await instance.inject({ method: "PUT", url: "/api/availability", payload: stored.json() });
+    expect(saved.statusCode).toBe(200);
+    expect(replaced.statusCode).toBe(200);
+    expect(replaced.json()).toEqual(stored.json());
+  });
+
+  it("returns Chinese field errors for semantic dates and local-time endpoints", async () => {
+    const response = await (await app()).inject({
+      method: "PUT", url: "/api/availability",
+      payload: {
+        timezone: "UTC",
+        weeklyRules: [{ id: "bad-rule", weekday: 1, startLocalTime: "25:00", endLocalTime: "10:60", timezone: "UTC" }],
+        exceptions: [{ id: "bad-date", date: "2026-02-30", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" }],
+      },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({
+      code: "VALIDATION_ERROR", message: "可用时间信息不完整",
+      fieldErrors: { startLocalTime: "请输入有效时间", endLocalTime: "请输入有效时间", date: "请输入有效日期" },
+    });
+  });
+
+  it("accepts named IANA zones and rejects fixed offsets", async () => {
+    const instance = await app();
+    for (const timezone of ["UTC", "Asia/Shanghai"]) {
+      expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } })).statusCode).toBe(200);
+    }
+    const offset = await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "+08:00", weeklyRules: [], exceptions: [] } });
+    expect(offset.statusCode).toBe(400);
+    expect(offset.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+  });
+
+  it("maps Fastify JSON-schema shape errors to form field errors", async () => {
+    const response = await (await app()).inject({ method: "PUT", url: "/api/availability", payload: { weeklyRules: [], exceptions: [] } });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "VALIDATION_ERROR", message: "请求格式不正确", fieldErrors: { timezone: "请输入有效字段" } });
+  });
 });

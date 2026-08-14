@@ -65,6 +65,11 @@ function assertDependencies(repository: TaskRepository, taskId: string, predeces
   if (createsCycle(repository, taskId, predecessorTaskIds)) throw new ApiError(409, { code: "DEPENDENCY_CYCLE", message: "任务依赖不能形成循环" });
 }
 
+function statusFor(requested: Task["status"] | undefined, remainingMinutes: number): Task["status"] {
+  if (requested === "archived") return "archived";
+  return remainingMinutes === 0 ? "completed" : "active";
+}
+
 export function registerTaskRoutes(app: FastifyInstance, repository: TaskRepository, clock: Clock, idFactory: () => string): void {
   app.get("/api/tasks", async () => repository.listActive().map((task) => responseFor(repository, task)));
 
@@ -82,7 +87,7 @@ export function registerTaskRoutes(app: FastifyInstance, repository: TaskReposit
       id, courseId: request.body.courseId ?? null, title: request.body.title!.trim(), deadline: Temporal.Instant.from(request.body.deadline!).toString(), remainingMinutes,
       priority: request.body.priority ?? "medium", splittable,
       minimumBlockMinutes: splittable ? request.body.minimumBlockMinutes ?? BLOCK_MINUTES : remainingMinutes || request.body.minimumBlockMinutes || BLOCK_MINUTES,
-      status: request.body.status ?? (remainingMinutes === 0 ? "completed" : "active"), createdAt: now, updatedAt: now,
+      status: statusFor(request.body.status, remainingMinutes), createdAt: now, updatedAt: now,
     };
     repository.saveWithDependencies(task, predecessors);
     return reply.status(201).send(responseFor(repository, task));
@@ -102,6 +107,7 @@ export function registerTaskRoutes(app: FastifyInstance, repository: TaskReposit
       ...existing, ...request.body, title: request.body.title?.trim() ?? existing.title,
       deadline: request.body.deadline === undefined ? existing.deadline : Temporal.Instant.from(request.body.deadline).toString(), remainingMinutes, splittable,
       minimumBlockMinutes: splittable ? request.body.minimumBlockMinutes ?? existing.minimumBlockMinutes : remainingMinutes || request.body.minimumBlockMinutes || existing.minimumBlockMinutes,
+      status: statusFor(request.body.status ?? existing.status, remainingMinutes),
       updatedAt: clock.now().toISOString(),
     };
     delete (task as Partial<TaskInput>).predecessorTaskIds;

@@ -4,10 +4,11 @@ import type { AvailabilityBlock, AvailabilityDefinition, AvailabilityException, 
 const MINUTES_PER_DAY = 24 * 60;
 const BLOCK_NANOSECONDS = 30n * 60n * 1_000_000_000n;
 
-type Interval = { start: bigint; end: bigint };
+type Interval = { start: bigint; end: bigint; anchor: bigint };
 type RulePart = { weekday: number; start: number; end: number };
 
-function timeToMinutes(value: string): number {
+function timeToMinutes(value: string, allowMidnightEnd = false): number {
+  if (allowMidnightEnd && value === "24:00") return MINUTES_PER_DAY;
   const match = /^(\d{2}):(\d{2})$/.exec(value);
   if (!match || Number(match[1]) > 23 || Number(match[2]) > 59) throw new RangeError("invalid local time");
   return Number(match[1]) * 60 + Number(match[2]);
@@ -19,7 +20,34 @@ function toTime(value: number): string {
 }
 
 function assertTimezone(timezone: string): void {
-  Temporal.ZonedDateTime.from({ timeZone: timezone, year: 2026, month: 1, day: 1, hour: 0, minute: 0 });
+  if (timezone !== "UTC" && !/^[A-Za-z_+-]+(?:\/[A-Za-z_+-]+)+$/.test(timezone)) throw new RangeError("invalid timezone");
+  try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); } catch { throw new RangeError("invalid timezone"); }
+}
+
+function isDate(value: string): boolean {
+  try { Temporal.PlainDate.from(value); return true; } catch { return false; }
+}
+
+function isTime(value: string, allowMidnightEnd = false): boolean {
+  try { timeToMinutes(value, allowMidnightEnd); return true; } catch { return false; }
+}
+
+export function validateAvailabilityDefinition(input: AvailabilityDefinition): Record<string, string> {
+  const errors: Record<string, string> = {};
+  try { assertTimezone(input.timezone); } catch { errors.timezone = "请输入有效时区"; }
+  input.weeklyRules.forEach((rule) => {
+    if (!Number.isInteger(rule.weekday) || rule.weekday < 1 || rule.weekday > 7) errors.weekday = "请输入有效星期";
+    if (!isTime(rule.startLocalTime)) errors.startLocalTime = "请输入有效时间";
+    if (!isTime(rule.endLocalTime, true)) errors.endLocalTime = "请输入有效时间";
+    if (isTime(rule.startLocalTime) && isTime(rule.endLocalTime, true) && timeToMinutes(rule.startLocalTime) === timeToMinutes(rule.endLocalTime, true)) errors.endLocalTime = "结束时间必须晚于开始时间";
+  });
+  input.exceptions.forEach((exception) => {
+    if (!isDate(exception.date)) errors.date = "请输入有效日期";
+    if (!isTime(exception.startLocalTime)) errors.startLocalTime = "请输入有效时间";
+    if (!isTime(exception.endLocalTime, true)) errors.endLocalTime = "请输入有效时间";
+    if (isTime(exception.startLocalTime) && isTime(exception.endLocalTime, true) && timeToMinutes(exception.startLocalTime) === timeToMinutes(exception.endLocalTime, true)) errors.endLocalTime = "结束时间必须晚于开始时间";
+  });
+  return errors;
 }
 
 function splitWeekly(weekday: number, start: number, end: number): RulePart[] {
@@ -45,19 +73,17 @@ function nextDate(date: string): string {
 }
 
 export function normalizeAvailabilityDefinition(input: AvailabilityDefinition): AvailabilityDefinition {
-  assertTimezone(input.timezone);
+  const errors = validateAvailabilityDefinition(input);
+  if (Object.keys(errors).length) throw new RangeError("invalid availability definition");
   const weeklyParts: RulePart[] = [];
   input.weeklyRules.forEach((rule) => {
     if (!Number.isInteger(rule.weekday) || rule.weekday < 1 || rule.weekday > 7) throw new RangeError("invalid weekday");
-    const start = timeToMinutes(rule.startLocalTime); const end = timeToMinutes(rule.endLocalTime);
-    if (start === end) throw new RangeError("equal local times");
+    const start = timeToMinutes(rule.startLocalTime); const end = timeToMinutes(rule.endLocalTime, true);
     weeklyParts.push(...splitWeekly(rule.weekday, start, end));
   });
   const exceptions: AvailabilityException[] = [];
   input.exceptions.forEach((exception) => {
-    Temporal.PlainDate.from(exception.date);
-    const start = timeToMinutes(exception.startLocalTime); const end = timeToMinutes(exception.endLocalTime);
-    if (start === end) throw new RangeError("equal local times");
+    const start = timeToMinutes(exception.startLocalTime); const end = timeToMinutes(exception.endLocalTime, true);
     const parts = end > start ? [{ date: exception.date, start, end }] : [{ date: exception.date, start, end: MINUTES_PER_DAY }, { date: nextDate(exception.date), start: 0, end }];
     parts.forEach((part, index) => exceptions.push({
       id: `exception:${exception.kind}:${part.date}:${toTime(part.start)}:${toTime(part.end)}:${index}`,
@@ -81,8 +107,8 @@ function subtractInterval(intervals: readonly Interval[], removal: Interval): In
   return intervals.flatMap((interval) => {
     if (removal.end <= interval.start || removal.start >= interval.end) return [interval];
     const result: Interval[] = [];
-    if (interval.start < removal.start) result.push({ start: interval.start, end: removal.start });
-    if (removal.end < interval.end) result.push({ start: removal.end, end: interval.end });
+    if (interval.start < removal.start) result.push({ start: interval.start, end: removal.start, anchor: interval.anchor });
+    if (removal.end < interval.end) result.push({ start: removal.end, end: interval.end, anchor: interval.anchor });
     return result;
   });
 }
@@ -92,11 +118,7 @@ function localInterval(date: Temporal.PlainDate, startMinutes: number, endMinute
   const endDate = endMinutes === MINUTES_PER_DAY ? date.add({ days: 1 }) : date;
   const start = Temporal.ZonedDateTime.from({ timeZone: timezone, year: startDate.year, month: startDate.month, day: startDate.day, hour: Math.floor(startMinutes / 60), minute: startMinutes % 60 }, { disambiguation: "compatible" }).epochNanoseconds;
   const end = Temporal.ZonedDateTime.from({ timeZone: timezone, year: endDate.year, month: endDate.month, day: endDate.day, hour: endMinutes === MINUTES_PER_DAY ? 0 : Math.floor(endMinutes / 60), minute: endMinutes === MINUTES_PER_DAY ? 0 : endMinutes % 60 }, { disambiguation: "compatible" }).epochNanoseconds;
-  return { start, end };
-}
-
-function ceilBlock(value: bigint): bigint {
-  return ((value + BLOCK_NANOSECONDS - 1n) / BLOCK_NANOSECONDS) * BLOCK_NANOSECONDS;
+  return { start, end, anchor: start };
 }
 
 export function resolveAvailability(definition: AvailabilityDefinition, rangeStart: string, rangeEnd: string): AvailabilityBlock[] {
@@ -108,19 +130,23 @@ export function resolveAvailability(definition: AvailabilityDefinition, rangeSta
   const lastDate = Temporal.Instant.from(rangeEnd).toZonedDateTimeISO(normalized.timezone).toPlainDate().add({ days: 1 });
   let intervals: Interval[] = [];
   for (let date = firstDate; Temporal.PlainDate.compare(date, lastDate) <= 0; date = date.add({ days: 1 })) {
-    normalized.weeklyRules.filter((rule) => rule.weekday === date.dayOfWeek).forEach((rule) => intervals.push(localInterval(date, timeToMinutes(rule.startLocalTime), rule.endLocalTime === "24:00" ? MINUTES_PER_DAY : timeToMinutes(rule.endLocalTime), normalized.timezone)));
+    normalized.weeklyRules.filter((rule) => rule.weekday === date.dayOfWeek).forEach((rule) => intervals.push(localInterval(date, timeToMinutes(rule.startLocalTime), timeToMinutes(rule.endLocalTime, true), normalized.timezone)));
   }
   intervals = mergeIntervals(intervals);
   normalized.exceptions.forEach((exception) => {
     const date = Temporal.PlainDate.from(exception.date);
-    const exceptionInterval = localInterval(date, timeToMinutes(exception.startLocalTime), exception.endLocalTime === "24:00" ? MINUTES_PER_DAY : timeToMinutes(exception.endLocalTime), normalized.timezone);
+    const exceptionInterval = localInterval(date, timeToMinutes(exception.startLocalTime), timeToMinutes(exception.endLocalTime, true), normalized.timezone);
     intervals = exception.kind === "available" ? mergeIntervals([...intervals, exceptionInterval]) : subtractInterval(intervals, exceptionInterval);
   });
   const blocks = new Map<string, AvailabilityBlock>();
   intervals.forEach((interval) => {
     const clippedStart = interval.start > start ? interval.start : start;
     const clippedEnd = interval.end < end ? interval.end : end;
-    for (let blockStart = ceilBlock(clippedStart); blockStart + BLOCK_NANOSECONDS <= clippedEnd; blockStart += BLOCK_NANOSECONDS) {
+    let blockStart = interval.anchor;
+    if (blockStart < clippedStart) {
+      blockStart += ((clippedStart - blockStart + BLOCK_NANOSECONDS - 1n) / BLOCK_NANOSECONDS) * BLOCK_NANOSECONDS;
+    }
+    for (; blockStart + BLOCK_NANOSECONDS <= clippedEnd; blockStart += BLOCK_NANOSECONDS) {
       const startAt = Temporal.Instant.fromEpochNanoseconds(blockStart).toString();
       const endAt = Temporal.Instant.fromEpochNanoseconds(blockStart + BLOCK_NANOSECONDS).toString();
       blocks.set(startAt, { id: `availability:${startAt}:${endAt}`, startAt, endAt });

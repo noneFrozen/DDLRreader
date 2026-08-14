@@ -76,4 +76,16 @@ describe("task REST API", () => {
     expect(cycle.statusCode).toBe(409);
     expect(cycle.json()).toEqual({ code: "DEPENDENCY_CYCLE", message: "任务依赖不能形成循环" });
   });
+
+  it("keeps status consistent with normalized remaining work except archived tasks", async () => {
+    const instance = await app();
+    const zero = await instance.inject({ method: "POST", url: "/api/tasks", payload: { title: "Zero", deadline: "2026-08-20T12:00:00Z", remainingMinutes: 0, status: "active" } });
+    expect(zero.json()).toMatchObject({ remainingMinutes: 0, status: "completed" });
+    const positive = await instance.inject({ method: "POST", url: "/api/tasks", payload: { title: "Positive", deadline: "2026-08-21T12:00:00Z", remainingMinutes: 1, status: "completed" } });
+    expect(positive.json()).toMatchObject({ remainingMinutes: 30, status: "active" });
+    const archived = await instance.inject({ method: "POST", url: "/api/tasks", payload: { title: "Archived", deadline: "2026-08-22T12:00:00Z", remainingMinutes: 0, status: "archived" } });
+    expect(archived.json()).toMatchObject({ status: "archived" });
+    const patched = await instance.inject({ method: "PATCH", url: "/api/tasks/task-2", payload: { remainingMinutes: 0, status: "active" } });
+    expect(patched.json()).toMatchObject({ remainingMinutes: 0, status: "completed" });
+  });
 });
