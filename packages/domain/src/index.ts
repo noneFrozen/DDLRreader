@@ -1,4 +1,5 @@
 export { toBlockCount, effectiveCapacityBlocks, BLOCK_MINUTES } from "./time.js";
+export { analyzeConflicts } from "./conflict.js";
 export type {
   IsoUtc,
   RiskLevel,
