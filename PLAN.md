@@ -1262,6 +1262,8 @@ git add Dockerfile .dockerignore .github/workflows/ci.yml scripts/container-smok
 git commit -m "ci: add GitHub Actions and container smoke test"
 ```
 
+**Completed 2026-08-14:** `99c12da`. Implemented multi-stage Dockerfile (Node 22 slim, non-root user, `DATA_DIR=/data`, health check), `@fastify/static` production SPA fallback with API 404 remaining JSON, container smoke test script, and GitHub Actions CI workflow (`unit-test` and `container-build` jobs on push/pull_request). PLAN precheck revised from GitLab CI to GitHub Actions. Docker build/run not executed in this environment (no Docker available).
+
 ---
 
 ### Task 14: Required Documentation and Process Evidence
