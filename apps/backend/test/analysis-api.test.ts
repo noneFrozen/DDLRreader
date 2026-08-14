@@ -45,4 +45,13 @@ describe("analysis REST API", () => {
       expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
     }
   });
+
+  it("uses the default buffer and honors an explicit buffer override", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => "task-1" }); apps.push(app);
+    await app.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "UTC", weeklyRules: [{ id: "m", weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "UTC" }], exceptions: [] } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "Task", deadline: "2026-08-10T12:00:00.000Z", remainingMinutes: 180 } });
+    expect((await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays: 7 } })).json()).toMatchObject({ risk: "red", firstConflict: { shortageMinutes: 30 } });
+    expect((await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays: 7, bufferRatio: 0 } })).json()).toMatchObject({ risk: "yellow" });
+  });
 });

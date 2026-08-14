@@ -18,7 +18,7 @@ import { registerTaskRoutes } from "./routes/tasks.js";
 export type AppOptions = { database?: Database.Database; clock?: Clock; idFactory?: () => string };
 
 export async function buildApp(options: AppOptions = {}) {
-  const app = Fastify({ logger: false });
+  const app = Fastify({ logger: false, ajv: { customOptions: { removeAdditional: false } } });
   const databasePath = getDatabasePath();
   if (!options.database) mkdirSync(dirname(databasePath), { recursive: true });
   const database = options.database ?? openDatabase(databasePath);

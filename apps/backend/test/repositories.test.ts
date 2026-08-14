@@ -133,6 +133,14 @@ describe("SQLite repositories", () => {
     expect(repository.listActive()).toEqual([taskFixture]);
   });
 
+  it("creates the fresh v3 schema with composite block PKs and required indexes", () => {
+    const connection = database();
+    expect(connection.pragma("user_version", { simple: true })).toBe(3);
+    expect(connection.prepare("PRAGMA table_info(schedule_blocks)").all().filter((row) => (row as { pk: number }).pk > 0).map((row) => ({ name: (row as { name: string }).name, pk: (row as { pk: number }).pk }))).toEqual([{ name: "plan_id", pk: 1 }, { name: "id", pk: 2 }]);
+    const indexes = connection.prepare("SELECT name FROM sqlite_master WHERE type = 'index'").all().map((row) => (row as { name: string }).name);
+    expect(indexes).toEqual(expect.arrayContaining(["idx_schedule_blocks_plan_start", "idx_tasks_deadline", "idx_availability_rules_weekday", "idx_availability_exceptions_date"]));
+  });
+
   it("lists active and completed tasks for planning while excluding archived tasks", () => {
     const repository = new SqliteTaskRepository(database());
     repository.save(taskFixture);

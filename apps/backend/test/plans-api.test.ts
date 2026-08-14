@@ -155,4 +155,69 @@ describe("plans REST API", () => {
     expect(database.prepare("SELECT remaining_minutes FROM tasks WHERE id = 'task-1'").get()).toEqual({ remaining_minutes: 60 });
     expect(repository.getById("plan-1")?.blocks[0].status).toBe("planned");
   });
+
+  it("mutates only the latest plan when block IDs are retained across versions", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const app = await buildApp({ database, idFactory: () => "task-1" }); apps.push(app);
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "Task", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 30 } });
+    const repository = new SqlitePlanRepository(database);
+    const base = { rangeStart: "2026-08-10T00:00:00.000Z", rangeEnd: "2026-08-17T00:00:00.000Z", riskLevel: "green" as const, unscheduledMinutes: 0, createdAt: "2026-08-10T00:00:00.000Z", blocks: [{ id: "same", taskId: "task-1", startAt: "2026-08-10T09:00:00.000Z", endAt: "2026-08-10T09:30:00.000Z", status: "planned" as const, locked: false }] };
+    repository.savePlan({ ...base, id: "old", version: 1 }); repository.savePlan({ ...base, id: "latest", version: 2 });
+    expect((await app.inject({ method: "PATCH", url: "/api/schedule-blocks/same", payload: { locked: true } })).statusCode).toBe(200);
+    expect(repository.getById("old")?.blocks).toEqual(base.blocks);
+    expect(repository.getById("latest")?.blocks).toEqual([{ ...base.blocks[0], locked: true }]);
+  });
+
+  it("returns ordinary overlap, unavailable-move, deadline-confirmation, and schema errors structurally", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => "task-1" }); apps.push(app);
+    await app.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "UTC", weeklyRules: [{ id: "m", weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "UTC" }], exceptions: [] } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "Task", deadline: "2026-08-10T09:45:00.000Z", remainingMinutes: 120 } });
+    new SqlitePlanRepository(database).savePlan({ id: "plan", rangeStart: "2026-08-10T00:00:00.000Z", rangeEnd: "2026-08-17T00:00:00.000Z", version: 1, riskLevel: "green", unscheduledMinutes: 0, createdAt: "2026-08-10T00:00:00.000Z", blocks: [
+      { id: "one", taskId: "task-1", startAt: "2026-08-10T09:00:00.000Z", endAt: "2026-08-10T09:30:00.000Z", status: "planned", locked: false }, { id: "two", taskId: "task-1", startAt: "2026-08-10T09:30:00.000Z", endAt: "2026-08-10T10:00:00.000Z", status: "planned", locked: false },
+    ] });
+    expect((await app.inject({ method: "PATCH", url: "/api/schedule-blocks/one", payload: { startAt: "2026-08-10T09:30:00.000Z", endAt: "2026-08-10T10:00:00.000Z" } })).json()).toEqual({ code: "SCHEDULE_CONFLICT", message: "该时间与已有安排冲突", details: { conflictingBlockId: "two" } });
+    expect((await app.inject({ method: "PATCH", url: "/api/schedule-blocks/one", payload: { startAt: "2026-08-10T12:00:00.000Z", endAt: "2026-08-10T12:30:00.000Z" } })).json()).toMatchObject({ code: "SCHEDULE_UNAVAILABLE" });
+    const deadline = await app.inject({ method: "PATCH", url: "/api/schedule-blocks/one", payload: { startAt: "2026-08-10T10:00:00.000Z", endAt: "2026-08-10T10:30:00.000Z" } }); expect(deadline.json()).toMatchObject({ code: "DEADLINE_CONFIRMATION_REQUIRED" });
+    expect((await app.inject({ method: "PATCH", url: "/api/schedule-blocks/one", payload: { startAt: "2026-08-10T10:00:00.000Z", endAt: "2026-08-10T10:30:00.000Z", allowAfterDeadline: true } })).statusCode).toBe(200);
+    const invalidResponses = [] as number[];
+    for (const payload of [{ locked: "yes" }, { extra: true }, { startAt: "2026-08-10T10:00:00+00:00" }, { startAt: "2026-08-10T10:00:00.000Z", endAt: "2026-08-10T10:00:00.000Z" }]) invalidResponses.push((await app.inject({ method: "PATCH", url: "/api/schedule-blocks/one", payload })).statusCode);
+    expect(invalidResponses).toEqual([400, 400, 400, 400]);
+  });
+
+  it("adds planning days on the availability timezone's local calendar across spring-forward", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const app = await buildApp({ database, clock: { now: () => new Date("2026-03-07T17:00:00.000Z") }, idFactory: () => "plan-1" }); apps.push(app);
+    await app.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "America/New_York", weeklyRules: [{ id: "s", weekday: 6, startLocalTime: "13:00", endLocalTime: "14:00", timezone: "America/New_York" }], exceptions: [] } });
+    const response = await app.inject({ method: "POST", url: "/api/plans", payload: { planningDays: 7, allowRisk: false } });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().plan.rangeEnd).toBe("2026-03-14T16:00:00Z");
+  });
+
+  it("keeps completed predecessors for planning and filters archived dependency endpoints", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const ids = ["completed", "successor", "archived", "active", "plan-1"];
+    const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => ids.shift()! }); apps.push(app);
+    await app.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "UTC", weeklyRules: [{ id: "m", weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "UTC" }], exceptions: [] } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "done", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 0 } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "successor", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 30, predecessorTaskIds: ["completed"] } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "archived", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 30 } });
+    await app.inject({ method: "PATCH", url: "/api/tasks/archived", payload: { status: "archived" } });
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "active", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 30, predecessorTaskIds: ["archived"] } });
+    const plan = await app.inject({ method: "POST", url: "/api/plans", payload: { planningDays: 7, allowRisk: false } });
+    expect(plan.statusCode).toBe(201);
+    expect(plan.json().plan.blocks.map((block: { taskId: string }) => block.taskId)).toEqual(expect.arrayContaining(["successor", "active"]));
+    expect(plan.json().plan.blocks.map((block: { taskId: string }) => block.taskId)).not.toContain("archived");
+  });
+
+  it("replans a requested older version, preserves its frozen block exactly, and versions after latest", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const ids = ["task-1", "plan-3"]; const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => ids.shift()! }); apps.push(app);
+    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "Task", deadline: "2026-08-11T12:00:00.000Z", remainingMinutes: 30 } });
+    const repository = new SqlitePlanRepository(database); const base = { rangeStart: "2026-08-10T00:00:00.000Z", rangeEnd: "2026-08-17T00:00:00.000Z", riskLevel: "green" as const, unscheduledMinutes: 0, createdAt: "2026-08-10T00:00:00.000Z" };
+    const frozen = { id: "frozen", taskId: "task-1", startAt: "2026-08-10T09:00:00.000Z", endAt: "2026-08-10T09:30:00.000Z", status: "started" as const, locked: true };
+    repository.savePlan({ ...base, id: "old", version: 1, blocks: [frozen] }); repository.savePlan({ ...base, id: "latest", version: 2, blocks: [] });
+    const response = await app.inject({ method: "POST", url: "/api/plans/old/replan" });
+    expect(response.json().plan).toMatchObject({ id: "plan-3", version: 3, blocks: [frozen] });
+  });
 });
