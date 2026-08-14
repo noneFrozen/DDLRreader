@@ -1018,6 +1018,15 @@ git commit -m "feat(ui): establish Organic Productive workspace"
 - Produces: typed `api` methods, `AvailabilityStep`, `TaskStep`.
 - Consumes: task and availability REST shapes from Task 7.
 
+**Binding Task 10 contracts:**
+- `apps/frontend/src/api/client.ts` exports a small typed client whose base URL defaults to same-origin `/api` and whose factory accepts an injected `fetch` for tests. Non-2xx JSON errors surface `message` and `fieldErrors` without throwing away server field names.
+- Availability UI may show the simplified PLAN assertion, but the actual `PUT /api/availability` payload must match Task 7 exactly: top-level `{ timezone, weeklyRules, exceptions }`; each weekly rule includes stable local `id`, `weekday`, `startLocalTime`, `endLocalTime`, and rule `timezone`. Use the selected top-level timezone for new weekly rules. Start with `exceptions: []`.
+- Browser timezone initializes the select when available; tests may run in jsdom and must still default deterministically to `Asia/Shanghai` when the browser timezone is unavailable or not in the built-in option set. Include at least `Asia/Shanghai`, `Asia/Tokyo`, `Europe/London`, and `America/New_York`.
+- Task creation calls `POST /api/tasks` with `courseId: null` unless the backend later gains a course API. The “course fixtures” in this task are local UI labels/colors only; do not invent course persistence or a `/api/courses` endpoint.
+- Deadline input is local date/time in the UI and is converted to an ISO UTC instant before API submission. Numeric hours are converted to integer minutes using `Math.round(hours * 60)` before sending; backend block rounding remains authoritative after persistence.
+- `TaskStep` owns the local task list returned from API calls and passes it to `TaskForm`; dependency choices are rendered from existing active tasks and must exclude the task currently being created/edited.
+- App navigation unlocks step 2 after a saved availability interval, unlocks step 3 only when there is at least one saved active task and at least one saved availability interval, and keeps disabled future steps as actual disabled buttons.
+
 - [ ] **Step 1: Write the failing availability submission test**
 
 ```tsx
