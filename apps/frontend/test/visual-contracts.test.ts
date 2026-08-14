@@ -31,18 +31,27 @@ function expectFallback(fallback: string, enhanced: string) {
 }
 
 describe("Organic Productive visual contracts", () => {
-  it("preserves the six confirmed base palette hex values without a later OKLCH override", () => {
-    expect(token("color-bg")).toBe("#E8EDDF");
-    expect(token("color-surface")).toBe("#F7F8EE");
-    expect(token("color-border")).toBe("#D8E0CF");
-    expect(token("color-muted")).toBe("#65795B");
-    expect(token("color-accent")).toBe("#40543A");
-    expect(token("color-fg")).toBe("#3E493B");
-    expect(tokens).not.toMatch(/--color-(?:bg|surface|border|muted|accent|fg):\s*oklch/i);
+  it("preserves the six confirmed hex colors with their equivalent OKLCH enhancements", () => {
+    const baseColors = [
+      ["color-bg", "#E8EDDF", "oklch(0.93847 0.01933 122.84)"],
+      ["color-surface", "#F7F8EE", "oklch(0.97564 0.01321 111.27)"],
+      ["color-border", "#D8E0CF", "oklch(0.89591 0.02439 127.61)"],
+      ["color-muted", "#65795B", "oklch(0.55130 0.05102 135.33)"],
+      ["color-accent", "#40543A", "oklch(0.42133 0.04874 138.57)"],
+      ["color-fg", "#3E493B", "oklch(0.39102 0.02719 139.00)"],
+    ];
+
+    for (const [name, hex, oklch] of baseColors) {
+      expect(token(name)).toBe(hex);
+      expect(tokens).toContain(`--${name}: ${hex};\n  --${name}: ${oklch};`);
+    }
   });
 
   it("provides a usable fallback before every enhanced color-mix treatment", () => {
-    expectFallback("background: #E8EDDF;", "radial-gradient(circle at 12% 8%, color-mix");
+    expectFallback(
+      "background:\n    radial-gradient(circle at 12% 8%, rgba(216, 224, 207, 0.55) 0 18rem, transparent 30rem),\n    linear-gradient(135deg, #F7F8EE 0%, #E8EDDF 100%);",
+      "radial-gradient(circle at 12% 8%, color-mix",
+    );
     expectFallback("background: rgba(247, 248, 238, 0.82);", "background: color-mix(in oklch, var(--color-surface) 82%, transparent);");
     expectFallback("box-shadow: 0 12px 28px rgba(168, 66, 50, 0.22);", "box-shadow: 0 12px 28px color-mix(in oklch, var(--color-risk-high) 22%, transparent);");
     expectFallback("background: rgba(247, 248, 238, 0.72);", "background: color-mix(in oklch, var(--color-surface) 72%, transparent);");

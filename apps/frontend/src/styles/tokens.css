@@ -1,10 +1,16 @@
 :root {
   --color-bg: #E8EDDF;
+  --color-bg: oklch(0.93847 0.01933 122.84);
   --color-surface: #F7F8EE;
+  --color-surface: oklch(0.97564 0.01321 111.27);
   --color-border: #D8E0CF;
+  --color-border: oklch(0.89591 0.02439 127.61);
   --color-muted: #65795B;
+  --color-muted: oklch(0.55130 0.05102 135.33);
   --color-accent: #40543A;
+  --color-accent: oklch(0.42133 0.04874 138.57);
   --color-fg: #3E493B;
+  --color-fg: oklch(0.39102 0.02719 139.00);
   --color-text-accessible: #3E493B;
   --color-risk-high: #A84232;
   --color-risk-warn: #A17A1C;

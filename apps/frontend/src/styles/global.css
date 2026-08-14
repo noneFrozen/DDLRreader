@@ -11,6 +11,9 @@ body {
   line-height: 1.6;
   background: #E8EDDF;
   background:
+    radial-gradient(circle at 12% 8%, rgba(216, 224, 207, 0.55) 0 18rem, transparent 30rem),
+    linear-gradient(135deg, #F7F8EE 0%, #E8EDDF 100%);
+  background:
     radial-gradient(circle at 12% 8%, color-mix(in oklch, var(--color-border) 55%, white) 0 18rem, transparent 30rem),
     linear-gradient(135deg, color-mix(in oklch, var(--color-bg) 88%, white) 0%, var(--color-bg) 100%);
 }
