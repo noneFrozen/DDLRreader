@@ -1,6 +1,7 @@
 export { toBlockCount, effectiveCapacityBlocks, BLOCK_MINUTES } from "./time.js";
 export { analyzeConflicts } from "./conflict.js";
 export { DependencyCycleError, generatePlan } from "./planner.js";
+export { applyProgress, replan } from "./replan.js";
 export type {
   IsoUtc,
   RiskLevel,
