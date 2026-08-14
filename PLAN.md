@@ -939,11 +939,13 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 
 **Files:**
 - Modify: `apps/frontend/package.json`
+- Modify: `package-lock.json`
 - Create: `apps/frontend/src/styles/tokens.css`
 - Create: `apps/frontend/src/styles/global.css`
 - Create: `apps/frontend/src/components/AppShell.tsx`
 - Create: `apps/frontend/src/components/RiskBadge.tsx`
 - Create: `apps/frontend/src/components/StepNavigation.tsx`
+- Create: `apps/frontend/test/setup.ts`
 - Create: `apps/frontend/test/app-shell.test.tsx`
 - Modify: `apps/frontend/src/app/App.tsx`
 - Modify: `apps/frontend/src/main.tsx`
@@ -952,7 +954,14 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 - Produces: `AppShell`, `RiskBadge({ level, label })`, `StepNavigation({ currentStep, onStepChange })`, CSS tokens.
 - Consumes: no backend behavior.
 
-- [ ] **Step 1: Write the failing accessibility test**
+**Binding Task 9 contracts:**
+- Install `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, and `jsdom` as frontend dev dependencies; add a jsdom Vitest test script/setup and update the root lockfile. No remote font, image, icon, or runtime dependency is allowed.
+- Implement only the confirmed B “Organic Productive” direction from the Open Design prototype: sage/mist background, translucent warm-white panels, dark botanical green, muted green text, soft green borders, and low-saturation brick/warm-yellow/plant-green risk colors. Preserve the prototype's OKLCH values with hex fallbacks.
+- Tokens cover the six base colors, three risk colors, 18/20/22px organic radii, 44px minimum controls, focus ring, two shadows, spacing scale, display/body/mono system font stacks, and 180ms motion with `prefers-reduced-motion` fallback.
+- `AppShell` exposes semantic header, flow navigation, main workspace, and task/summary aside slots. Desktop is exactly `220px minmax(0, 1fr) 300px`; tablet is two columns with the aside spanning; mobile is one column ordered flow → main → aside and has no horizontal overflow.
+- Initial shell demo is the confirmed conflict-analysis state, not an A/B selector: heading `DDL Radar`, current step `冲突分析`, visible `高风险`, concise 2.5-hour conflict copy, and compact task/summary preview. Future unavailable steps are actual disabled buttons; completed/current steps remain keyboard reachable.
+
+- [ ] **Step 1: Install the frontend test harness and write the failing accessibility test**
 
 Add `"test": "vitest run"` to `apps/frontend/package.json` in the same change that creates the frontend's first test. From this task onward, root `npm test` includes the frontend suite; before this task the workspace intentionally has no frontend test script, avoiding Vitest's no-test exit code 1.
 
@@ -983,7 +992,7 @@ Run: `npm --workspace @ddl-radar/frontend test && npm --workspace @ddl-radar/fro
 Expected: tests and production build pass.
 
 ```bash
-git add apps/frontend/package.json apps/frontend/src apps/frontend/test/app-shell.test.tsx
+git add apps/frontend/package.json package-lock.json apps/frontend/src apps/frontend/test
 git commit -m "feat(ui): establish Organic Productive workspace"
 ```
 
