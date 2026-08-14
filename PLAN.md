@@ -755,19 +755,34 @@ git commit -m "feat(backend): persist planning data in SQLite"
 **Can run in parallel with:** Frontend styling Task 9.
 
 **Files:**
+- Modify: `apps/backend/package.json`
+- Modify: `package-lock.json`
+- Modify: `packages/domain/src/types.ts`
 - Create: `apps/backend/src/routes/tasks.ts`
 - Create: `apps/backend/src/routes/availability.ts`
 - Create: `apps/backend/src/http/error-handler.ts`
 - Create: `apps/backend/src/services/availability.ts`
+- Modify: `apps/backend/src/repositories/task-repository.ts`
 - Create: `apps/backend/test/tasks-api.test.ts`
 - Create: `apps/backend/test/availability-api.test.ts`
+- Modify: `apps/backend/test/repositories.test.ts`
 - Modify: `apps/backend/src/app.ts`
 
 **Interfaces:**
 - Produces: routes `GET/POST/PATCH/DELETE /api/tasks` and `GET/PUT /api/availability`, plus `resolveAvailability(definition, rangeStart, rangeEnd): AvailabilityBlock[]`.
 - Consumes: repository contracts from Task 6 and domain normalization from Task 2.
 
-- [ ] **Step 1: Write a failing task validation test**
+**Binding Task 7 contracts:**
+- Extend the domain-owned `TaskRepository` with `listDependencies(): TaskDependency[]` and `saveWithDependencies(task, predecessorTaskIds): void`. The SQLite implementation replaces one task's incoming dependency edges and saves the task in one transaction; API code never reaches into SQLite directly.
+- Task create/update payloads use `predecessorTaskIds`; responses return the normalized stored `Task` plus the same field. Reject missing predecessor IDs as validation errors and reject the candidate graph when it contains a cycle before persistence.
+- Inject a `Clock` and ID factory into the app composition boundary for deterministic API tests. Production defaults may be created when `buildApp()` is called, but importing modules performs no I/O and tests use in-memory SQLite.
+- Add `@js-temporal/polyfill` as a backend dependency. Availability resolution uses IANA time zones and half-open ranges `[rangeStart, rangeEnd)`; output blocks are unique, chronologically sorted 30-minute UTC intervals with stable content-derived IDs.
+- Validate local times as `HH:mm`. Equal endpoints are invalid. An end earlier than its start is an overnight range: split it at local midnight before merging. Weekly ranges merge when overlapping or adjacent on the same weekday; generated normalized IDs are deterministic. Exceptions retain input order and are applied in that order, so a later exception overrides an earlier one. Each rule is normalized to the definition-level timezone.
+- Resolve local times with Temporal's compatible DST disambiguation, clip to the requested UTC range, merge intervals, and only emit complete 30-minute blocks. Reject invalid IANA time zones and a non-increasing resolution range with stable validation errors.
+
+- [ ] **Step 1: Install timezone support and write failing task validation/repository tests**
+
+Add `@js-temporal/polyfill` to backend dependencies and update the root lockfile. First add repository RED coverage for atomic task/dependency round trips and rollback, then the API validation test below.
 
 ```ts
 it("returns field errors instead of storing an invalid task", async () => {
@@ -804,13 +819,15 @@ Send two overlapping Monday ranges and assert the stored response contains one m
 
 Store normalized non-overlapping rules as an `AvailabilityDefinition`. Preserve exception kind and date. Implement a pure application service that expands weekly rules into 30-minute UTC blocks for the requested range and timezone, then applies date exceptions over those rules; repositories do not contain this business logic.
 
+Cover merging, overnight splitting, exception precedence, range clipping, deterministic IDs, and a DST transition using a non-UTC IANA zone. `GET /api/availability` returns the stored normalized definition; `PUT` returns the replacement definition.
+
 - [ ] **Step 5: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/backend test`  
 Expected: health, repositories, tasks, and availability tests pass.
 
 ```bash
-git add apps/backend/src/app.ts apps/backend/src/routes apps/backend/src/http apps/backend/test
+git add apps/backend/package.json package-lock.json packages/domain/src/types.ts apps/backend/src/app.ts apps/backend/src/routes apps/backend/src/http apps/backend/src/services apps/backend/src/repositories/task-repository.ts apps/backend/test
 git commit -m "feat(api): manage tasks and availability"
 ```
 
