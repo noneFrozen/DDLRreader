@@ -87,18 +87,23 @@ describe("availability REST API", () => {
     for (const timezone of ["UTC", "GMT", "CET", "Asia/Shanghai", "Asia/Kathmandu"]) {
       expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } })).statusCode).toBe(200);
     }
-    const offset = await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "+08:00", weeklyRules: [], exceptions: [] } });
-    expect(offset.statusCode).toBe(400);
-    expect(offset.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+    for (const timezone of ["+08:00", "-05:30", "+0800", "-0800"]) {
+      const offset = await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } });
+      expect(offset.statusCode).toBe(400);
+      expect(offset.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+    }
   });
 
   it("validates every incoming weekly-rule timezone before normalizing it", async () => {
-    const response = await (await app()).inject({
-      method: "PUT", url: "/api/availability",
-      payload: { timezone: "UTC", weeklyRules: [{ id: "bad-zone", weekday: 1, startLocalTime: "09:00", endLocalTime: "10:00", timezone: "+08:00" }], exceptions: [] },
-    });
-    expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+    const instance = await app();
+    for (const timezone of ["+08:00", "-05:30", "+0800", "-0800"]) {
+      const response = await instance.inject({
+        method: "PUT", url: "/api/availability",
+        payload: { timezone: "UTC", weeklyRules: [{ id: "bad-zone", weekday: 1, startLocalTime: "09:00", endLocalTime: "10:00", timezone }], exceptions: [] },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+    }
   });
 
   it("preserves duplicate exceptions with distinct stable normalized IDs", async () => {

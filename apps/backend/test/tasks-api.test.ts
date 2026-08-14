@@ -88,4 +88,26 @@ describe("task REST API", () => {
     const patched = await instance.inject({ method: "PATCH", url: "/api/tasks/task-2", payload: { remainingMinutes: 0, status: "active" } });
     expect(patched.json()).toMatchObject({ remainingMinutes: 0, status: "completed" });
   });
+
+  it("rejects missing course references before changing a task or its dependencies", async () => {
+    const instance = await app();
+    const database = databases.at(-1)!;
+    const missing = await instance.inject({ method: "POST", url: "/api/tasks", payload: { courseId: "missing-course", title: "Missing", deadline: "2026-08-20T12:00:00Z", remainingMinutes: 30 } });
+    expect(missing.statusCode).toBe(400);
+    expect(missing.json()).toEqual({ code: "VALIDATION_ERROR", message: "任务信息不完整", fieldErrors: { courseId: "课程不存在" } });
+
+    database.prepare("INSERT INTO courses (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)").run("course-1", "Algorithms", "#40543A", "2026-08-14T10:15:30.123Z", "2026-08-14T10:15:30.123Z");
+    const task = await instance.inject({ method: "POST", url: "/api/tasks", payload: { courseId: "course-1", title: "Saved", deadline: "2026-08-20T12:00:00Z", remainingMinutes: 30 } });
+    const predecessor = await instance.inject({ method: "POST", url: "/api/tasks", payload: { title: "Predecessor", deadline: "2026-08-21T12:00:00Z", remainingMinutes: 30 } });
+    expect(task.statusCode).toBe(201);
+    expect(task.json()).toMatchObject({ courseId: "course-1" });
+    expect(predecessor.statusCode).toBe(201);
+
+    const failedPatch = await instance.inject({ method: "PATCH", url: "/api/tasks/task-1", payload: { courseId: "missing-course", title: "Changed", predecessorTaskIds: ["task-2"] } });
+    expect(failedPatch.statusCode).toBe(400);
+    expect(failedPatch.json()).toEqual({ code: "VALIDATION_ERROR", message: "任务信息不完整", fieldErrors: { courseId: "课程不存在" } });
+    expect((await instance.inject({ method: "GET", url: "/api/tasks" })).json()).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "task-1", title: "Saved", courseId: "course-1", predecessorTaskIds: [] }),
+    ]));
+  });
 });

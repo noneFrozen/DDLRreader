@@ -84,6 +84,7 @@ export type StoredPlan = {
 export interface TaskRepository {
   listActive(): Task[];
   listDependencies(): TaskDependency[];
+  courseExists(id: string): boolean;
   get(id: string): Task | null;
   save(task: Task): void;
   saveWithDependencies(task: Task, predecessorTaskIds: readonly string[]): void;

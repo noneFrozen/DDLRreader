@@ -133,6 +133,15 @@ describe("SQLite repositories", () => {
     expect(repository.listActive()).toEqual([taskFixture]);
   });
 
+  it("checks course references through the task repository boundary", () => {
+    const connection = database();
+    const repository = new SqliteTaskRepository(connection);
+    connection.prepare("INSERT INTO courses (id, name, color, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
+      .run("course-1", "Algorithms", "#40543A", taskFixture.createdAt, taskFixture.updatedAt);
+    expect(repository.courseExists("course-1")).toBe(true);
+    expect(repository.courseExists("missing-course")).toBe(false);
+  });
+
   it("atomically replaces a task's incoming dependency edges", () => {
     const repository = new SqliteTaskRepository(database());
     repository.save(taskFixture);

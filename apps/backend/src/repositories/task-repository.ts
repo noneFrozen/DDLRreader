@@ -47,6 +47,10 @@ export class SqliteTaskRepository implements TaskRepository {
       });
   }
 
+  courseExists(id: string): boolean {
+    return this.database.prepare("SELECT 1 FROM courses WHERE id = ? LIMIT 1").get(id) !== undefined;
+  }
+
   get(id: string): Task | null {
     const row = this.database.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as TaskRow | undefined;
     return row ? toTask(row) : null;

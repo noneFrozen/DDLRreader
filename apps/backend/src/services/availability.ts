@@ -20,7 +20,7 @@ function toTime(value: number): string {
 }
 
 function assertTimezone(timezone: string): void {
-  if (/^[+-]\d{2}:\d{2}$/.test(timezone)) throw new RangeError("invalid timezone");
+  if (/^[+-]\d{2}:?\d{2}$/.test(timezone)) throw new RangeError("invalid timezone");
   try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); } catch { throw new RangeError("invalid timezone"); }
 }
 

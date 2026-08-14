@@ -65,6 +65,10 @@ function assertDependencies(repository: TaskRepository, taskId: string, predeces
   if (createsCycle(repository, taskId, predecessorTaskIds)) throw new ApiError(409, { code: "DEPENDENCY_CYCLE", message: "任务依赖不能形成循环" });
 }
 
+function assertCourse(repository: TaskRepository, courseId: string | null): void {
+  if (courseId !== null && !repository.courseExists(courseId)) throw validationError({ courseId: "课程不存在" });
+}
+
 function statusFor(requested: Task["status"] | undefined, remainingMinutes: number): Task["status"] {
   if (requested === "archived") return "archived";
   return remainingMinutes === 0 ? "completed" : "active";
@@ -76,6 +80,7 @@ export function registerTaskRoutes(app: FastifyInstance, repository: TaskReposit
   app.post<{ Body: TaskInput }>("/api/tasks", { schema: createSchema }, async (request, reply) => {
     const errors = validateTask(request.body, true);
     if (Object.keys(errors).length) throw validationError(errors);
+    assertCourse(repository, request.body.courseId ?? null);
     const predecessors = [...new Set(request.body.predecessorTaskIds ?? [])].sort();
     if (predecessors.some((id) => repository.get(id) === null)) throw validationError({ predecessorTaskIds: "前置任务不存在" });
     const id = idFactory();
@@ -98,6 +103,7 @@ export function registerTaskRoutes(app: FastifyInstance, repository: TaskReposit
     if (!existing) throw new ApiError(404, { code: "TASK_NOT_FOUND", message: "任务不存在" });
     const errors = validateTask(request.body, false);
     if (Object.keys(errors).length) throw validationError(errors);
+    assertCourse(repository, request.body.courseId ?? existing.courseId);
     const predecessors = request.body.predecessorTaskIds === undefined ? dependenciesFor(repository, existing.id) : [...new Set(request.body.predecessorTaskIds)].sort();
     assertDependencies(repository, existing.id, predecessors);
     const rawMinutes = request.body.remainingMinutes ?? existing.remainingMinutes;
