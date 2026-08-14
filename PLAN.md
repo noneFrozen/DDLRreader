@@ -674,6 +674,8 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 **Can run in parallel with:** Tasks 3–5 in a separate worktree after shared types are committed.
 
 **Files:**
+- Modify: `apps/backend/package.json`
+- Modify: `package-lock.json`
 - Create: `apps/backend/src/config.ts`
 - Create: `apps/backend/src/db/connection.ts`
 - Create: `apps/backend/src/db/migrate.ts`
@@ -686,7 +688,11 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 - Produces: `SqliteTaskRepository`, `SqliteAvailabilityRepository`, `SqlitePlanRepository`, `openDatabase(path)`, `migrate(database)`.
 - Consumes: domain entity types and `TaskRepository`, `AvailabilityRepository`, `PlanRepository` contracts from Task 2.
 
-- [ ] **Step 1: Write failing repository round-trip and transaction tests**
+- [ ] **Step 1: Install the SQLite runtime and type contract**
+
+Add `better-sqlite3` to backend dependencies and `@types/better-sqlite3` to backend devDependencies, then run `npm install` so `package-lock.json` records the workspace dependency. Dependency installation is setup only; no repository behavior is implemented in this step.
+
+- [ ] **Step 2: Write failing repository round-trip and transaction tests**
 
 ```ts
 it("round-trips a task without changing UTC timestamps", () => {
@@ -703,26 +709,26 @@ it("does not replace the active plan when writing a block fails", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [ ] **Step 3: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/backend test -- repositories.test.ts`  
 Expected: FAIL because repositories and migrations are missing.
 
-- [ ] **Step 3: Create explicit migrations**
+- [ ] **Step 4: Create explicit migrations**
 
-Create tables matching SPEC entities, foreign keys, unique dependency pairs, plan version uniqueness, and indexes on `tasks(deadline)`, `schedule_blocks(plan_id, start_at)`, and availability date fields. Enable `PRAGMA foreign_keys = ON` on every connection.
+Create tables matching SPEC entities: `courses`, `tasks`, `task_dependencies`, `availability_rules`, `availability_exceptions`, `plans`, and `schedule_blocks`. Include `plans.unscheduled_minutes` because `StoredPlan` and Task 8 persist it. Add foreign keys, unique dependency pairs, plan version uniqueness, and indexes on `tasks(deadline)`, `schedule_blocks(plan_id, start_at)`, and availability date fields. Enable `PRAGMA foreign_keys = ON` on every connection.
 
-- [ ] **Step 4: Implement focused repositories**
+- [ ] **Step 5: Implement focused repositories**
 
 Repository classes accept a `better-sqlite3` database in their constructor and implement the corresponding domain contracts without redeclaring those interfaces. Convert rows to domain values at one mapping boundary. `SqlitePlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
 
-- [ ] **Step 5: Verify and commit**
+- [ ] **Step 6: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/backend test -- repositories.test.ts`  
 Expected: temporary-database tests pass and leave no files in the repository.
 
 ```bash
-git add apps/backend/src/config.ts apps/backend/src/db apps/backend/src/repositories apps/backend/test/repositories.test.ts
+git add apps/backend/package.json package-lock.json apps/backend/src/config.ts apps/backend/src/db apps/backend/src/repositories apps/backend/test/repositories.test.ts
 git commit -m "feat(backend): persist planning data in SQLite"
 ```
 
