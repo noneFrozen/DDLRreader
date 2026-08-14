@@ -47,6 +47,15 @@ export class SqlitePlanRepository implements PlanRepository {
   }
 
   updateBlock(block: ScheduleBlock): void {
+    assertValidBlocks([block]);
+    const stored = this.database.prepare("SELECT plan_id FROM schedule_blocks WHERE id = ?").get(block.id) as { plan_id: string } | undefined;
+    if (!stored) return;
+    const overlaps = this.database.prepare(`
+      SELECT 1 FROM schedule_blocks
+      WHERE plan_id = ? AND id <> ? AND start_at < ? AND end_at > ?
+      LIMIT 1
+    `).get(stored.plan_id, block.id, block.endAt, block.startAt);
+    if (overlaps) throw new Error("schedule blocks overlap");
     this.database.prepare("UPDATE schedule_blocks SET task_id = @taskId, start_at = @startAt, end_at = @endAt, status = @status, locked = @locked WHERE id = @id").run({ ...block, locked: Number(block.locked) });
   }
 

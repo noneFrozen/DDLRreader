@@ -65,6 +65,61 @@ describe("SQLite repositories", () => {
     return connection;
   }
 
+  function legacyDatabase(): Database.Database {
+    const connection = new Database(":memory:");
+    connection.pragma("foreign_keys = ON");
+    connection.exec(`
+      CREATE TABLE courses (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+      CREATE TABLE tasks (
+        id TEXT PRIMARY KEY, course_id TEXT REFERENCES courses(id) ON DELETE SET NULL, title TEXT NOT NULL,
+        deadline TEXT NOT NULL, remaining_minutes INTEGER NOT NULL, priority TEXT NOT NULL, splittable INTEGER NOT NULL,
+        minimum_block_minutes INTEGER NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+      );
+      CREATE TABLE task_dependencies (
+        predecessor_task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        successor_task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+        UNIQUE(predecessor_task_id, successor_task_id)
+      );
+      CREATE TABLE availability_settings (id INTEGER PRIMARY KEY CHECK (id = 1), timezone TEXT NOT NULL);
+      CREATE TABLE availability_rules (
+        id TEXT PRIMARY KEY, weekday INTEGER NOT NULL, start_local_time TEXT NOT NULL, end_local_time TEXT NOT NULL, timezone TEXT NOT NULL
+      );
+      CREATE TABLE availability_exceptions (
+        id TEXT PRIMARY KEY, date TEXT NOT NULL, start_local_time TEXT NOT NULL, end_local_time TEXT NOT NULL, kind TEXT NOT NULL
+      );
+      CREATE TABLE plans (
+        id TEXT PRIMARY KEY, range_start TEXT NOT NULL, range_end TEXT NOT NULL, version INTEGER NOT NULL UNIQUE,
+        risk_level TEXT NOT NULL, unscheduled_minutes INTEGER NOT NULL, created_at TEXT NOT NULL
+      );
+      CREATE TABLE schedule_blocks (
+        id TEXT PRIMARY KEY, plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        task_id TEXT NOT NULL REFERENCES tasks(id), start_at TEXT NOT NULL, end_at TEXT NOT NULL,
+        status TEXT NOT NULL, locked INTEGER NOT NULL
+      );
+    `);
+    connection.prepare("INSERT INTO courses (id, name) VALUES (?, ?)").run("legacy-course", "Legacy course");
+    connection.prepare(`
+      INSERT INTO tasks (id, course_id, title, deadline, remaining_minutes, priority, splittable, minimum_block_minutes, status, created_at, updated_at)
+      VALUES (@id, @courseId, @title, @deadline, @remainingMinutes, @priority, @splittable, @minimumBlockMinutes, @status, @createdAt, @updatedAt)
+    `).run({ ...taskFixture, id: "legacy-task", courseId: "legacy-course", splittable: 1 });
+    connection.prepare("INSERT INTO availability_settings (id, timezone) VALUES (?, ?)").run(1, "Asia/Shanghai");
+    connection.prepare("INSERT INTO availability_rules (id, weekday, start_local_time, end_local_time, timezone) VALUES (?, ?, ?, ?, ?)")
+      .run("legacy-rule-z", 5, "18:00", "20:00", "Asia/Shanghai");
+    connection.prepare("INSERT INTO availability_rules (id, weekday, start_local_time, end_local_time, timezone) VALUES (?, ?, ?, ?, ?)")
+      .run("legacy-rule-a", 1, "09:00", "12:00", "Asia/Shanghai");
+    connection.prepare("INSERT INTO availability_exceptions (id, date, start_local_time, end_local_time, kind) VALUES (?, ?, ?, ?, ?)")
+      .run("legacy-exception-z", "2026-08-21", "13:00", "14:30", "available");
+    connection.prepare("INSERT INTO availability_exceptions (id, date, start_local_time, end_local_time, kind) VALUES (?, ?, ?, ?, ?)")
+      .run("legacy-exception-a", "2026-08-17", "10:00", "11:00", "unavailable");
+    connection.prepare("INSERT INTO plans (id, range_start, range_end, version, risk_level, unscheduled_minutes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+      .run("legacy-plan", validPlan.rangeStart, validPlan.rangeEnd, 1, validPlan.riskLevel, validPlan.unscheduledMinutes, validPlan.createdAt);
+    const insertLegacyBlock = connection.prepare("INSERT INTO schedule_blocks (id, plan_id, task_id, start_at, end_at, status, locked) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    insertLegacyBlock.run("legacy-block-later", "legacy-plan", "legacy-task", "2026-08-14T15:00:00.000Z", "2026-08-14T16:00:00.000Z", "planned", 0);
+    insertLegacyBlock.run("legacy-block-earlier", "legacy-plan", "legacy-task", "2026-08-14T13:00:00.000Z", "2026-08-14T14:00:00.000Z", "planned", 1);
+    databases.push(connection);
+    return connection;
+  }
+
   function planRepository(): SqlitePlanRepository {
     const connection = database();
     new SqliteTaskRepository(connection).save(taskFixture);
@@ -87,6 +142,33 @@ describe("SQLite repositories", () => {
       created_at: "2026-08-14T10:15:30.123Z",
       updated_at: "2026-08-14T11:15:30.123Z",
     });
+  });
+
+  it("upgrades the original Task 6 schema without losing persisted repository data", () => {
+    const connection = legacyDatabase();
+    migrate(connection);
+    expect(connection.prepare("SELECT id, name, color, created_at, updated_at FROM courses WHERE id = ?").get("legacy-course")).toMatchObject({ id: "legacy-course", name: "Legacy course" });
+    expect(connection.prepare("SELECT color, created_at, updated_at FROM courses WHERE id = ?").get("legacy-course")).toEqual({
+      color: "#6b7280",
+      created_at: "1970-01-01T00:00:00.000Z",
+      updated_at: "1970-01-01T00:00:00.000Z",
+    });
+    const availability = new SqliteAvailabilityRepository(connection);
+    expect(availability.get().weeklyRules.map((rule) => rule.id)).toEqual(["legacy-rule-z", "legacy-rule-a"]);
+    expect(availability.get().exceptions.map((exception) => exception.id)).toEqual(["legacy-exception-z", "legacy-exception-a"]);
+    availability.replace(availabilityFixture);
+    expect(availability.get()).toEqual(availabilityFixture);
+    const plans = new SqlitePlanRepository(connection);
+    expect(plans.getById("legacy-plan")?.blocks.map((block) => block.id)).toEqual(["legacy-block-later", "legacy-block-earlier"]);
+    plans.savePlan({
+      ...validPlan,
+      id: "post-migration-plan",
+      version: 2,
+      blocks: [{ ...validPlan.blocks[0], id: "post-migration-block", taskId: "legacy-task" }],
+    });
+    expect(plans.getLatest()?.id).toBe("post-migration-plan");
+    expect(() => connection.prepare("UPDATE tasks SET splittable = 2 WHERE id = ?").run("legacy-task")).toThrow();
+    expect(() => connection.prepare("UPDATE schedule_blocks SET locked = 2 WHERE id = ?").run("legacy-block-later")).toThrow();
   });
 
   it("round-trips availability definitions without resolving business rules", () => {
@@ -138,6 +220,29 @@ describe("SQLite repositories", () => {
       ...validPlan,
       blocks: [{ ...validPlan.blocks[0], status: "completed", locked: true }],
     });
+  });
+
+  it("does not update a block to a non-positive interval", () => {
+    const repository = planRepository();
+    repository.savePlan(validPlan);
+    expect(() => repository.updateBlock({ ...validPlan.blocks[0], startAt: "2026-08-14T14:00:00.000Z", endAt: "2026-08-14T14:00:00.000Z" }))
+      .toThrow("schedule block end must be after start");
+    expect(repository.getById(validPlan.id)).toEqual(validPlan);
+  });
+
+  it("does not update a block to overlap another block in its plan", () => {
+    const repository = planRepository();
+    const plan: StoredPlan = {
+      ...validPlan,
+      blocks: [
+        validPlan.blocks[0],
+        { id: "block-2", taskId: "task-1", startAt: "2026-08-14T15:00:00.000Z", endAt: "2026-08-14T16:00:00.000Z", status: "planned", locked: false },
+      ],
+    };
+    repository.savePlan(plan);
+    expect(() => repository.updateBlock({ ...plan.blocks[0], startAt: "2026-08-14T15:30:00.000Z", endAt: "2026-08-14T16:30:00.000Z" }))
+      .toThrow("schedule blocks overlap");
+    expect(repository.getById(plan.id)).toEqual(plan);
   });
 
   it("rolls back a plan row when a later block insert violates a task foreign key", () => {
