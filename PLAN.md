@@ -1027,7 +1027,7 @@ git commit -m "feat(ui): establish Organic Productive workspace"
 - `TaskStep` owns the local task list returned from API calls and passes it to `TaskForm`; dependency choices are rendered from existing active tasks and must exclude the task currently being created/edited.
 - App navigation unlocks step 2 after a saved availability interval, unlocks step 3 only when there is at least one saved active task and at least one saved availability interval, and keeps disabled future steps as actual disabled buttons.
 
-- [ ] **Step 1: Write the failing availability submission test**
+- [x] **Step 1: Write the failing availability submission test**
 
 ```tsx
 await user.click(screen.getByRole("checkbox", { name: "周一" }));
@@ -1040,22 +1040,22 @@ expect(fakeApi.putAvailability).toHaveBeenCalledWith(expect.objectContaining({
 }));
 ```
 
-- [ ] **Step 2: Run red, then implement controlled availability fields**
+- [x] **Step 2: Run red, then implement controlled availability fields**
 
 Run: `npm --workspace @ddl-radar/frontend test -- availability-step.test.tsx`  
 Expected: FAIL because `AvailabilityStep` is missing.
 
 Render browser timezone as the default but allow an IANA timezone select. Associate every error message via `aria-describedby`.
 
-- [ ] **Step 3: Write the failing three-task flow test**
+- [x] **Step 3: Write the failing three-task flow test**
 
 Enter “软件工程大作业”, Friday 23:59, 12 hours, high priority; submit and assert the row exposes the title, deadline, `剩余 12 小时`, and `优先级高`. Repeat through a parameterized test for math and English fixtures.
 
-- [ ] **Step 4: Implement task form and list**
+- [x] **Step 4: Implement task form and list**
 
 Use numeric hours in the UI and convert to integer minutes before calling the API. Expose split/non-split and minimum block fields; dependency choices exclude the task itself. Do not proceed to analysis until at least one active task and one availability interval exist.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/frontend test`  
 Expected: availability, task, and shell tests pass.
@@ -1064,6 +1064,8 @@ Expected: availability, task, and shell tests pass.
 git add apps/frontend/src/api apps/frontend/src/features apps/frontend/src/app/App.tsx apps/frontend/test
 git commit -m "feat(ui): capture availability and course tasks"
 ```
+
+**Completed 2026-08-14:** `75b4fa1` and `9f16464`. Implemented the typed frontend API client, availability entry, task entry, local course fixtures, dependency picker, saved-state navigation gates, startup hydration, guarded timezone fallback, and accessible server-error fallbacks. Initial review found three Important issues; fix round 1 was re-reviewed clean. Controller verification: frontend 16/16 tests, root 115/115 tests, all workspace typechecks, frontend production build, and `git diff --check` passed.
 
 ---
 
