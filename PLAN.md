@@ -841,17 +841,32 @@ git commit -m "feat(api): manage tasks and availability"
 **Can run in parallel with:** Task 9 after endpoint response types are committed.
 
 **Files:**
+- Modify: `packages/domain/src/types.ts`
+- Modify: `apps/backend/src/db/migrate.ts`
+- Modify: `apps/backend/src/repositories/task-repository.ts`
+- Modify: `apps/backend/src/repositories/plan-repository.ts`
 - Create: `apps/backend/src/routes/analysis.ts`
 - Create: `apps/backend/src/routes/plans.ts`
 - Create: `apps/backend/src/services/ics.ts`
 - Create: `apps/backend/test/analysis-api.test.ts`
 - Create: `apps/backend/test/plans-api.test.ts`
 - Create: `apps/backend/test/ics.test.ts`
+- Modify: `apps/backend/test/repositories.test.ts`
 - Modify: `apps/backend/src/app.ts`
 
 **Interfaces:**
 - Produces: `POST /api/analysis`, `POST /api/plans`, `POST /api/plans/:id/replan`, `PATCH /api/schedule-blocks/:id`, `GET /api/plans/:id/export.ics`.
 - Consumes: all domain functions and repositories.
+
+**Binding Task 8 contracts:**
+- Analysis and plan creation bodies use `{ planningDays: 7..14, bufferRatio?: number }`; plan creation additionally requires `allowRisk: boolean`. Derive `rangeEnd` by adding local calendar days in the stored IANA timezone to the injected clock time. Default `bufferRatio` is `0.1`.
+- Extend the domain-owned `TaskRepository` with `listPlanning(): Task[]`, returning active and completed tasks but excluding archived tasks. Construct one `PlanningInput`; include only dependency edges whose endpoints are in that task set. Analysis, planning, and replanning call domain functions and never duplicate their rules.
+- Upgrade SQLite to schema version 3. `schedule_blocks` uses `(plan_id, id)` as its composite primary key so frozen block IDs can survive across plan versions. Preserve existing rows and ordinals in the v2→v3 migration. Change `PlanRepository.updateBlock(planId, block)` accordingly; API block mutation targets the latest plan only.
+- `POST /api/plans` returns `{ plan, unscheduled, explanation, analysis }`. Reject red analysis with 409 `RISK_CONFIRMATION_REQUIRED` unless `allowRisk` is true. If resolved availability is empty, return 409 `NO_AVAILABILITY` even when risk is allowed. Plan IDs come from the injected ID factory; version is `latest.version + 1`; persist the sum of per-task unscheduled minutes.
+- `POST /api/plans/:id/replan` loads the requested plan, rejects 404 when absent, resolves availability from the injected current time through the stored `rangeEnd`, and passes `previousBlocks` to domain `replan`. It persists and returns a new plan ID/version while frozen block IDs and values remain unchanged. An expired range returns 409 `PLAN_RANGE_EXPIRED`.
+- `PATCH /api/schedule-blocks/:id` operates on the latest plan and accepts partial `{ startAt, endAt, status, locked, completedMinutes, allowAfterDeadline }`. Validate shape and UTC intervals. A move must be fully covered by resolved availability. Overlap with a locked sibling returns the exact documented 409 body; other overlaps return `SCHEDULE_CONFLICT` naming the conflicting block. Moving after the task deadline requires `allowAfterDeadline: true`.
+- When `completedMinutes` is present, apply domain `applyProgress`, update the task remaining/status and block state, and return overflow details. Run the task and block writes in one injected database transaction so failure cannot partially apply progress. Lock/status-only updates do not change task minutes.
+- ICS export reads the requested stored plan and its task titles, converts instants to the availability definition timezone, uses stable `block.id@ddl-radar.local` UIDs and plan `createdAt` for deterministic `DTSTAMP`, emits CRLF, RFC 5545 escaping and 75-octet folding, `text/calendar; charset=utf-8`, and attachment filename `ddl-radar-plan.ics`. Missing plan/task data returns a structured error, never a stack.
 
 - [ ] **Step 1: Write the failing course example analysis test**
 
@@ -872,6 +887,8 @@ Expected: FAIL with route not found.
 
 Load tasks and the `AvailabilityDefinition` through repositories, resolve it through the Task 7 application service, construct one `PlanningInput`, and call domain functions without duplicating risk rules. `POST /api/plans` requires `{ allowRisk: boolean }`; reject red analysis with 409 unless `allowRisk` is true. Persist `unscheduledMinutes` alongside the plan response.
 
+Before route orchestration, write repository RED tests for `listPlanning`, composite schedule-block identities across plan versions, and the v2→v3 data-preserving migration. Then implement the schema/repository changes above.
+
 - [ ] **Step 3: Write and satisfy move-conflict tests**
 
 Assert moving a block over a locked block returns 409:
@@ -885,6 +902,8 @@ Assert moving a block over a locked block returns 409:
 ```
 
 The repository remains unchanged after the response.
+
+Also cover unavailable-time moves, after-deadline confirmation, progress overflow, atomic task/block rollback, missing block/plan, frozen-block preservation during replan, deterministic version increments, empty availability, and expired replan ranges.
 
 - [ ] **Step 4: Write a failing ICS escaping and UID test**
 
@@ -905,7 +924,7 @@ Run: `npm --workspace @ddl-radar/backend test && npm --workspace @ddl-radar/back
 Expected: all backend tests pass.
 
 ```bash
-git add apps/backend/src/app.ts apps/backend/src/routes apps/backend/src/services apps/backend/test
+git add packages/domain/src/types.ts apps/backend/src/app.ts apps/backend/src/db apps/backend/src/repositories apps/backend/src/routes apps/backend/src/services apps/backend/test
 git commit -m "feat(api): expose analysis plans and calendar export"
 ```
 
