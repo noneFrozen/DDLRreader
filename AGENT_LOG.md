@@ -1,0 +1,11 @@
+# DDL Radar Agent Log
+
+本日志按时间记录智能体执行、Superpowers 技能、验证证据、人工干预和 commit。未发生或未记录的信息明确标注，不事后补造。
+
+| 时间 | Task | 执行者 | Superpowers | 关键 prompt / context | 结果与证据 | 人工干预 | commit |
+|---|---|---|---|---|---|---|---|
+| 2026-08-14 | 冷启动准备 | Codex | `using-git-worktrees`、`verification-before-completion` | 从已修订规格建立独立 worktree；生成只允许读取 SPEC/PLAN 的提示词 | worktree 为 `codex/opencode-cold-start`，起点干净且未继承主目录未跟踪实现 | 增加 `.worktrees/` 忽略规则并保存原始 prompt | `dd37792` |
+| 2026-08-14 | Task 1 | OpenCode 1.18.18 / deepseek-v4-pro | OpenCode 报告按 Superpowers 流程执行；具体技能日志未提供 | 仅 `SPEC.md`、`PLAN.md`；实现 Task 1–2；有歧义即暂停 | 根测试、typecheck、build 报告退出码 0；commit 中包含 backend health test 与最小 frontend | OpenCode 自行移除 backend `rootDir` 解决 test 不在 rootDir；但测试与实现同时写入，缺少 RED 证据 | `f5752c7` |
+| 2026-08-14 | Task 2 | OpenCode 1.18.18 / deepseek-v4-pro | `test-driven-development` 的红—绿行为有命令证据 | 同上 | RED：6 tests failed，退出码 1；GREEN：15 tests passed，typecheck 0 errors | 无规格问询；未进行口头补充 | `bff5200` |
+| 2026-08-14 | Task 1–2 复核 | Codex | `verification-before-completion` | 不采信代理完成声明，检查 diff 并重跑根命令 | 16 tests passed；三个 workspace typecheck 通过；普通 Windows 环境 build 退出 0 | 发现 `.gitignore` 覆盖导致 `.worktrees/` 丢失，单独恢复并修订 PLAN；保留 Task 1 缺少 RED 的事实 | `2df21e4`；过程文档 commit 见本条之后的 Git 历史 |
+
