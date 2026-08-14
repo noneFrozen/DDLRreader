@@ -64,4 +64,26 @@ describe("input flow navigation", () => {
     await user.click(screen.getByRole("button", { name: "生成可执行计划" }));
     expect(await screen.findByRole("heading", { name: "本周执行计划" })).toBeVisible();
   });
+
+  it("shows a plan-generation failure without leaving an unhandled rejection", async () => {
+    const user = userEvent.setup();
+    const task = {
+      id: "task-1", courseId: null, title: "已保存任务", deadline: "2026-08-21T15:59:00.000Z", remainingMinutes: 120,
+      priority: "high", splittable: true, minimumBlockMinutes: 30, status: "active", createdAt: "2026-08-14T00:00:00.000Z", updatedAt: "2026-08-14T00:00:00.000Z", predecessorTaskIds: [],
+    };
+    vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/availability")) return { ok: true, json: async () => ({ timezone: "Asia/Shanghai", weeklyRules: [{ id: "monday", weekday: 1, startLocalTime: "18:00", endLocalTime: "21:00", timezone: "Asia/Shanghai" }], exceptions: [] }) };
+      if (url.endsWith("/tasks")) return { ok: true, json: async () => [task] };
+      if (url.endsWith("/analysis")) return { ok: true, json: async () => ({ status: "ready", risk: "green", nodes: [], firstConflict: null, warnings: [] }) };
+      if (url.endsWith("/plans")) return { ok: false, json: async () => ({ message: "计划生成失败" }) };
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "冲突分析" })).toBeEnabled());
+    await user.click(screen.getByRole("button", { name: "冲突分析" }));
+    await user.click(await screen.findByRole("button", { name: "生成可执行计划" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("计划生成失败");
+  });
 });

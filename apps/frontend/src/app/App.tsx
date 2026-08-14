@@ -51,7 +51,7 @@ export function App() {
     try {
       const generated = await api.createPlan({ planningDays: 7, bufferRatio: 0.1, allowRisk });
       setPlan(generated.plan); setAnalysis(generated.analysis); setCurrentStep(4);
-    } catch (error) { setAnalysisError((error as Error).message); throw error; }
+    } catch (error) { setAnalysisError((error as Error).message); }
   };
 
   return <AppShell

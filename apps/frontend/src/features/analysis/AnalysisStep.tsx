@@ -32,6 +32,7 @@ export function AnalysisStep({ analysis, tasks, onBack = () => undefined, onGene
   const [generating, setGenerating] = useState(false);
 
   const generate = async (allowRisk: boolean) => {
+    if (generating) return;
     setGenerating(true);
     try { await onGenerate(allowRisk); } finally { setGenerating(false); setConfirmingRisk(false); }
   };
@@ -61,6 +62,6 @@ export function AnalysisStep({ analysis, tasks, onBack = () => undefined, onGene
     {analysis.warnings.map((warning) => <p className="analysis-warning" key={`${warning.code}-${warning.taskId ?? ""}`}>{warning.message}</p>)}
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="analysis-actions"><button type="button" onClick={onBack}>返回修改</button><button type="button" className="entry-submit" disabled={generating} onClick={() => analysis.risk === "red" ? setConfirmingRisk(true) : void generate(false)}>{generating ? "生成中…" : presentation.action}</button></div>
-    {confirmingRisk && <section className="confirm-dialog" aria-labelledby="risk-confirmation-title"><h3 id="risk-confirmation-title">确认生成尽力计划？</h3><p>当前风险较高，计划可能无法覆盖所有任务。</p><div><button type="button" onClick={() => setConfirmingRisk(false)}>取消</button><button type="button" className="entry-submit" onClick={() => void generate(true)}>确认生成尽力计划</button></div></section>}
+    {confirmingRisk && <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="risk-confirmation-title"><h3 id="risk-confirmation-title">确认生成尽力计划？</h3><p>当前风险较高，计划可能无法覆盖所有任务。</p><div><button type="button" disabled={generating} onClick={() => setConfirmingRisk(false)}>取消</button><button type="button" className="entry-submit" disabled={generating} onClick={() => void generate(true)}>确认生成尽力计划</button></div></section>}
   </section>;
 }

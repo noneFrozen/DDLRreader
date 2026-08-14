@@ -48,6 +48,22 @@ describe("AnalysisStep", () => {
     expect(onGenerate).toHaveBeenCalledWith(true);
   });
 
+  it("submits a red-risk confirmation only once while generation is pending", async () => {
+    const user = userEvent.setup();
+    let finishGeneration: (() => void) | undefined;
+    const onGenerate = vi.fn().mockImplementation(() => new Promise<void>((resolve) => { finishGeneration = resolve; }));
+    render(<AnalysisStep analysis={redAnalysisFixture} tasks={tasks} onGenerate={onGenerate} />);
+
+    await user.click(screen.getByRole("button", { name: "生成尽力计划" }));
+    const confirm = screen.getByRole("button", { name: "确认生成尽力计划" });
+    expect(screen.getByRole("dialog", { name: "确认生成尽力计划？" })).toHaveAttribute("aria-modal", "true");
+    await user.click(confirm);
+    expect(confirm).toBeDisabled();
+    await user.click(confirm);
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+    finishGeneration?.();
+  });
+
   it("shows an analysis request error instead of leaving the view busy", () => {
     render(<AnalysisStep analysis={null} tasks={tasks} loading={false} error="分析服务暂不可用" />);
 
