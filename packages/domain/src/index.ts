@@ -11,6 +11,7 @@ export type {
   TaskDependency,
   WeeklyAvailabilityRule,
   AvailabilityException,
+  AvailabilityDefinition,
   AvailabilityBlock,
   ScheduleBlock,
   PlanningInput,

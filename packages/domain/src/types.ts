@@ -20,6 +20,11 @@ export type Task = {
 export type TaskDependency = { predecessorTaskId: string; successorTaskId: string };
 export type WeeklyAvailabilityRule = { id: string; weekday: number; startLocalTime: string; endLocalTime: string; timezone: string };
 export type AvailabilityException = { id: string; date: string; startLocalTime: string; endLocalTime: string; kind: "available" | "unavailable" };
+export type AvailabilityDefinition = {
+  timezone: string;
+  weeklyRules: readonly WeeklyAvailabilityRule[];
+  exceptions: readonly AvailabilityException[];
+};
 export type AvailabilityBlock = { id: string; startAt: IsoUtc; endAt: IsoUtc };
 export type ScheduleBlock = {
   id: string;
@@ -83,8 +88,8 @@ export interface TaskRepository {
   delete(id: string): boolean;
 }
 export interface AvailabilityRepository {
-  replace(input: { timezone: string; weeklyRules: readonly WeeklyAvailabilityRule[]; exceptions: readonly AvailabilityException[] }): void;
-  getResolved(rangeStart: IsoUtc, rangeEnd: IsoUtc): AvailabilityBlock[];
+  replace(input: AvailabilityDefinition): void;
+  get(): AvailabilityDefinition;
 }
 export interface PlanRepository {
   savePlan(plan: StoredPlan): void;
