@@ -125,6 +125,7 @@ export type PlanningInput = {
 export type ConflictDetail = {
   deadline: IsoUtc;
   shortageMinutes: number;
+  /** All active incomplete tasks due no later than this conflict deadline, in stable order. */
   taskIds: string[];
 };
 export type InputIssue = { code: string; taskId?: string };
@@ -195,8 +196,6 @@ export interface PlanRepository {
 - Create: `apps/frontend/index.html`
 - Create: `apps/frontend/src/main.tsx`
 - Create: `apps/frontend/src/app/App.tsx`
-- Create: `packages/domain/package.json`
-- Create: `packages/domain/tsconfig.json`
 - Create: `.gitignore`
 
 **Interfaces:**
@@ -229,6 +228,8 @@ Root `package.json` must expose one-command verification:
   "engines": { "node": ">=22" }
 }
 ```
+
+Task 1 does not create the domain workspace or any empty `src/` tree. Root `tsconfig.base.json` contains shared `compilerOptions` only and has no project `references`; each workspace `tsconfig.json` extends it directly, so `composite: true` is unnecessary. Backend defines `test`, `typecheck`, and `build` scripts because it already contains source and a health test. Frontend defines `dev`, `typecheck`, and `build`, but does not add a `test` script until its first test is created in Task 9. Therefore root `npm test` runs the backend suite only and exits 0 without relying on `--passWithNoTests`.
 
 Run: `npm install`  
 Expected: `package-lock.json` is created and no workspace is missing.
@@ -284,7 +285,7 @@ Expected: health test passes; all three commands exit 0.
 - [ ] **Step 7: Commit**
 
 ```bash
-git add package.json package-lock.json tsconfig.base.json .gitignore apps packages
+git add package.json package-lock.json tsconfig.base.json .gitignore apps
 git commit -m "chore: bootstrap DDL Radar workspaces"
 ```
 
@@ -296,6 +297,8 @@ git commit -m "chore: bootstrap DDL Radar workspaces"
 **Can run in parallel with:** None; later domain tasks consume these interfaces.
 
 **Files:**
+- Create: `packages/domain/package.json`
+- Create: `packages/domain/tsconfig.json`
 - Create: `packages/domain/src/types.ts`
 - Create: `packages/domain/src/time.ts`
 - Create: `packages/domain/src/index.ts`
@@ -305,7 +308,11 @@ git commit -m "chore: bootstrap DDL Radar workspaces"
 - Produces: `Task`, `AvailabilityBlock`, `ScheduleBlock`, `PlanningInput`, `Clock`, `toBlockCount(minutes)`, `effectiveCapacityBlocks(blocks, bufferRatio)`.
 - Consumes: No application interfaces.
 
-- [ ] **Step 1: Write failing normalization tests**
+- [ ] **Step 1: Create the domain workspace with its first source and test files**
+
+Create `@ddl-radar/domain` with `test: "vitest run"`, `typecheck: "tsc --noEmit"`, and `build: "tsc"` scripts. Its `tsconfig.json` extends `../../tsconfig.base.json`, includes both `src/**/*.ts` and `test/**/*.ts`, and has neither project references nor `composite`. Create the manifest, configuration, first source files, and first test in the same step so TypeScript never evaluates an empty input set.
+
+- [ ] **Step 2: Write failing normalization tests**
 
 ```ts
 import { describe, expect, it } from "vitest";
@@ -323,12 +330,12 @@ describe("30-minute normalization", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [ ] **Step 3: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/domain test -- time.test.ts`  
 Expected: FAIL because both functions are missing.
 
-- [ ] **Step 3: Implement exact normalization rules**
+- [ ] **Step 4: Implement exact normalization rules**
 
 ```ts
 export const BLOCK_MINUTES = 30;
@@ -345,20 +352,20 @@ export function effectiveCapacityBlocks(blocks: number, bufferRatio: number): nu
 }
 ```
 
-- [ ] **Step 4: Define shared immutable types**
+- [ ] **Step 5: Define shared immutable types**
 
 Use discriminated unions for `RiskLevel = "red" | "yellow" | "green"`, `TaskStatus`, and `BlockStatus`. `PlanningInput` contains `now`, `rangeEnd`, `timezone`, `bufferRatio`, readonly tasks, readonly availability blocks, readonly dependencies, and readonly frozen schedule blocks. IDs are strings supplied by callers; domain functions do not generate UUIDs.
 
-- [ ] **Step 5: Verify exports and boundary failures**
+- [ ] **Step 6: Verify exports and boundary failures**
 
 Add tests that negative minutes, fractional block counts, and `bufferRatio === 1` throw the exact `RangeError` messages.  
 Run: `npm --workspace @ddl-radar/domain test`  
 Expected: all domain tests pass.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add packages/domain/src packages/domain/test/time.test.ts
+git add packages/domain/package.json packages/domain/tsconfig.json packages/domain/src packages/domain/test/time.test.ts
 git commit -m "feat(domain): define planning types and time blocks"
 ```
 
@@ -371,6 +378,7 @@ git commit -m "feat(domain): define planning types and time blocks"
 
 **Files:**
 - Create: `packages/domain/src/conflict.ts`
+- Create: `packages/domain/test/fixtures.ts`
 - Create: `packages/domain/test/conflict.test.ts`
 - Modify: `packages/domain/src/index.ts`
 
@@ -380,7 +388,66 @@ git commit -m "feat(domain): define planning types and time blocks"
 
 - [ ] **Step 1: Write a failing cumulative-capacity test**
 
+Define the test helpers explicitly instead of relying on undeclared fixtures:
+
 ```ts
+// packages/domain/test/fixtures.ts
+import type { AvailabilityBlock, PlanningInput, Task } from "../src/types.js";
+
+const NOW = "2026-08-11T00:00:00.000Z";
+const BLOCK_MS = 30 * 60 * 1000;
+
+export function task(id: string, deadline: string, remainingMinutes: number): Task {
+  return {
+    id,
+    courseId: null,
+    title: id,
+    deadline,
+    remainingMinutes,
+    priority: "medium",
+    splittable: true,
+    minimumBlockMinutes: 30,
+    status: "active",
+    createdAt: NOW,
+    updatedAt: NOW,
+  };
+}
+
+export function blocksBefore(deadline: string, count: number): AvailabilityBlock[] {
+  const deadlineMs = new Date(deadline).getTime();
+  return Array.from({ length: count }, (_, index) => {
+    const startMs = deadlineMs - (count - index) * BLOCK_MS;
+    return {
+      id: `block-${index}`,
+      startAt: new Date(startMs).toISOString(),
+      endAt: new Date(startMs + BLOCK_MS).toISOString(),
+    };
+  });
+}
+
+export function makeInput({
+  tasks,
+  availability,
+  bufferRatio = 0.1,
+}: Pick<PlanningInput, "tasks" | "availability"> & { bufferRatio?: number }): PlanningInput {
+  return {
+    now: NOW,
+    rangeEnd: "2026-08-25T00:00:00.000Z",
+    timezone: "Asia/Shanghai",
+    bufferRatio,
+    tasks,
+    dependencies: [],
+    availability,
+    frozenBlocks: [],
+  };
+}
+```
+
+```ts
+import { expect, it } from "vitest";
+import { analyzeConflicts } from "../src/conflict.js";
+import { blocksBefore, makeInput, task } from "./fixtures.js";
+
 it("reports the earliest deadline capacity shortage", () => {
   const result = analyzeConflicts(makeInput({
     tasks: [task("math", "2026-08-13T12:00:00.000Z", 240)],
@@ -394,6 +461,23 @@ it("reports the earliest deadline capacity shortage", () => {
     firstConflict: { deadline: "2026-08-13T12:00:00.000Z", shortageMinutes: 60, taskIds: ["math"] },
   });
 });
+
+it("lists every cumulative contributor at the first conflict", () => {
+  const currentDeadline = "2026-08-13T12:00:00.000Z";
+  const result = analyzeConflicts(makeInput({
+    tasks: [
+      task("earlier", "2026-08-13T11:30:00.000Z", 30),
+      task("current", currentDeadline, 60),
+    ],
+    availability: blocksBefore(currentDeadline, 2),
+    bufferRatio: 0,
+  }));
+
+  expect(result).toMatchObject({
+    status: "ready",
+    firstConflict: { deadline: currentDeadline, shortageMinutes: 30, taskIds: ["earlier", "current"] },
+  });
+});
 ```
 
 - [ ] **Step 2: Run and confirm red**
@@ -403,7 +487,7 @@ Expected: FAIL because `analyzeConflicts` is missing.
 
 - [ ] **Step 3: Implement cumulative deadline nodes**
 
-Group active tasks by identical deadline, sort deadlines ascending, and for each node calculate cumulative required blocks and unique available blocks ending no later than that deadline. Use `effectiveCapacityBlocks` before comparing. Convert block shortage to minutes with `BLOCK_MINUTES`; never round a shortage down.
+Group active tasks by identical deadline, sort deadlines ascending, and for each node calculate cumulative required blocks and unique available blocks ending no later than that deadline. Use `effectiveCapacityBlocks` before comparing. Convert block shortage to minutes with `BLOCK_MINUTES`; never round a shortage down. At the first conflicting deadline, `firstConflict.taskIds` contains every active task with remaining work whose deadline is no later than that node—not only tasks newly due at that exact time. Order those IDs deterministically by deadline ascending, priority rank `high > medium > low`, creation time ascending, then task ID ascending.
 
 - [ ] **Step 4: Add failing risk-boundary tests**
 
@@ -436,7 +520,7 @@ Run: `npm --workspace @ddl-radar/domain test && npm --workspace @ddl-radar/domai
 Expected: all tests pass with no warnings.
 
 ```bash
-git add packages/domain/src/conflict.ts packages/domain/src/index.ts packages/domain/test/conflict.test.ts
+git add packages/domain/src/conflict.ts packages/domain/src/index.ts packages/domain/test/fixtures.ts packages/domain/test/conflict.test.ts
 git commit -m "feat(domain): analyze cumulative deadline conflicts"
 ```
 
@@ -781,6 +865,7 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 **Can run in parallel with:** Tasks 6–8.
 
 **Files:**
+- Modify: `apps/frontend/package.json`
 - Create: `apps/frontend/src/styles/tokens.css`
 - Create: `apps/frontend/src/styles/global.css`
 - Create: `apps/frontend/src/components/AppShell.tsx`
@@ -795,6 +880,8 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 - Consumes: no backend behavior.
 
 - [ ] **Step 1: Write the failing accessibility test**
+
+Add `"test": "vitest run"` to `apps/frontend/package.json` in the same change that creates the frontend's first test. From this task onward, root `npm test` includes the frontend suite; before this task the workspace intentionally has no frontend test script, avoiding Vitest's no-test exit code 1.
 
 ```tsx
 render(<App />);
@@ -823,7 +910,7 @@ Run: `npm --workspace @ddl-radar/frontend test && npm --workspace @ddl-radar/fro
 Expected: tests and production build pass.
 
 ```bash
-git add apps/frontend/src apps/frontend/test/app-shell.test.tsx
+git add apps/frontend/package.json apps/frontend/src apps/frontend/test/app-shell.test.tsx
 git commit -m "feat(ui): establish Organic Productive workspace"
 ```
 
