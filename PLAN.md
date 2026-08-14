@@ -695,11 +695,11 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 - Produces: `SqliteTaskRepository`, `SqliteAvailabilityRepository`, `SqlitePlanRepository`, `openDatabase(path)`, `migrate(database)`.
 - Consumes: domain entity types and `TaskRepository`, `AvailabilityRepository`, `PlanRepository` contracts from Task 2.
 
-- [ ] **Step 1: Install the SQLite runtime and type contract**
+- [x] **Step 1: Install the SQLite runtime and type contract**
 
 Add `better-sqlite3` to backend dependencies and `@types/better-sqlite3` to backend devDependencies, then run `npm install` so `package-lock.json` records the workspace dependency. Dependency installation is setup only; no repository behavior is implemented in this step.
 
-- [ ] **Step 2: Write failing repository round-trip and transaction tests**
+- [x] **Step 2: Write failing repository round-trip and transaction tests**
 
 ```ts
 it("round-trips a task without changing UTC timestamps", () => {
@@ -722,20 +722,20 @@ it("round-trips availability definitions without resolving business rules", () =
 });
 ```
 
-- [ ] **Step 3: Run and confirm red**
+- [x] **Step 3: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/backend test -- repositories.test.ts`  
 Expected: FAIL because repositories and migrations are missing.
 
-- [ ] **Step 4: Create explicit migrations**
+- [x] **Step 4: Create explicit migrations**
 
 Create tables matching SPEC entities: `courses`, `tasks`, `task_dependencies`, `availability_rules`, `availability_exceptions`, `plans`, and `schedule_blocks`. Include `plans.unscheduled_minutes` because `StoredPlan` and Task 8 persist it. Add foreign keys, unique dependency pairs, plan version uniqueness, and indexes on `tasks(deadline)`, `schedule_blocks(plan_id, start_at)`, and availability date fields. Enable `PRAGMA foreign_keys = ON` on every connection.
 
-- [ ] **Step 5: Implement focused repositories**
+- [x] **Step 5: Implement focused repositories**
 
 Repository classes accept a `better-sqlite3` database in their constructor and implement the corresponding domain contracts without redeclaring those interfaces. `SqliteAvailabilityRepository` stores and returns `AvailabilityDefinition` losslessly; it never expands weekly rules or applies exceptions. Convert rows to domain values at one mapping boundary. `SqlitePlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/backend test -- repositories.test.ts`  
 Expected: temporary-database tests pass and leave no files in the repository.
@@ -744,6 +744,8 @@ Expected: temporary-database tests pass and leave no files in the repository.
 git add apps/backend/package.json package-lock.json packages/domain/src/types.ts packages/domain/src/index.ts apps/backend/src/config.ts apps/backend/src/db apps/backend/src/repositories apps/backend/test/repositories.test.ts
 git commit -m "feat(backend): persist planning data in SQLite"
 ```
+
+**Completed 2026-08-14:** `91fe275`, `ff7bb2e`, `93cbe03`, and `3d9c156`. Four independent review gates drove lossless ordered round trips, real transaction rollback coverage, versioned legacy-schema upgrades, guarded block updates, and safe rejection of nested migrations. Closure review approved with no findings. Controller verification: backend 15/15 tests, domain 37/37 tests, both typechecks, and `git diff --check` passed.
 
 ---
 
