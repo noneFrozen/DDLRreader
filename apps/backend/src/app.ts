@@ -1,6 +1,7 @@
 import Fastify from "fastify";
-import { mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import fastifyStatic from "@fastify/static";
+import { mkdirSync, existsSync } from "node:fs";
+import { dirname, join } from "node:path";
 import type Database from "better-sqlite3";
 import type { Clock } from "../../../packages/domain/src/types.js";
 import { migrate } from "./db/migrate.js";
@@ -44,6 +45,16 @@ export async function buildApp(options: AppOptions = {}) {
       database.exec("DELETE FROM availability_rules");
       database.exec("DELETE FROM availability_settings");
       return reply.status(200).send({ status: "reset" });
+    });
+  }
+  const publicDir = process.env.PUBLIC_DIR;
+  if (publicDir && existsSync(publicDir)) {
+    await app.register(fastifyStatic, { root: publicDir, prefix: "/" });
+    app.setNotFoundHandler(async (request, reply) => {
+      if (request.url.startsWith("/api/")) {
+        return reply.status(404).send({ code: "NOT_FOUND", message: "请求的资源不存在" });
+      }
+      return reply.sendFile("index.html");
     });
   }
   if (!options.database) app.addHook("onClose", async () => database.close());

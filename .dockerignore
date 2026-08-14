@@ -1,0 +1,10 @@
+node_modules
+dist
+*.tsbuildinfo
+.env
+*.log
+.DS_Store
+Thumbs.db
+.worktrees
+test-results
+.superpowers
