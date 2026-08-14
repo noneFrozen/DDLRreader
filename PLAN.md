@@ -780,7 +780,7 @@ git commit -m "feat(backend): persist planning data in SQLite"
 - Validate local times as `HH:mm`. Equal endpoints are invalid. An end earlier than its start is an overnight range: split it at local midnight before merging. Weekly ranges merge when overlapping or adjacent on the same weekday; generated normalized IDs are deterministic. Exceptions retain input order and are applied in that order, so a later exception overrides an earlier one. Each rule is normalized to the definition-level timezone.
 - Resolve local times with Temporal's compatible DST disambiguation, clip to the requested UTC range, merge intervals, and only emit complete 30-minute blocks. Reject invalid IANA time zones and a non-increasing resolution range with stable validation errors.
 
-- [ ] **Step 1: Install timezone support and write failing task validation/repository tests**
+- [x] **Step 1: Install timezone support and write failing task validation/repository tests**
 
 Add `@js-temporal/polyfill` to backend dependencies and update the root lockfile. First add repository RED coverage for atomic task/dependency round trips and rollback, then the API validation test below.
 
@@ -804,24 +804,24 @@ it("returns field errors instead of storing an invalid task", async () => {
 });
 ```
 
-- [ ] **Step 2: Run red, then implement task schemas and routes**
+- [x] **Step 2: Run red, then implement task schemas and routes**
 
 Run: `npm --workspace @ddl-radar/backend test -- tasks-api.test.ts`  
 Expected: FAIL with route not found.
 
 Use Fastify JSON Schema for shape validation and a service-level check for dependency cycles. Before persistence, normalize every positive `remainingMinutes` value upward with `toBlockCount(minutes) * BLOCK_MINUTES`; zero remains zero. Return the normalized stored task with 201, 404 with `{ code: "TASK_NOT_FOUND", message: "任务不存在" }`, and 409 for dependency cycles.
 
-- [ ] **Step 3: Write failing availability overlap tests**
+- [x] **Step 3: Write failing availability overlap tests**
 
 Send two overlapping Monday ranges and assert the stored response contains one merged interval. Send an end time equal to start time and assert 400 with field error `endLocalTime: "结束时间必须晚于开始时间"`.
 
-- [ ] **Step 4: Implement rule merge and exception override behavior**
+- [x] **Step 4: Implement rule merge and exception override behavior**
 
 Store normalized non-overlapping rules as an `AvailabilityDefinition`. Preserve exception kind and date. Implement a pure application service that expands weekly rules into 30-minute UTC blocks for the requested range and timezone, then applies date exceptions over those rules; repositories do not contain this business logic.
 
 Cover merging, overnight splitting, exception precedence, range clipping, deterministic IDs, and a DST transition using a non-UTC IANA zone. `GET /api/availability` returns the stored normalized definition; `PUT` returns the replacement definition.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/backend test`  
 Expected: health, repositories, tasks, and availability tests pass.
@@ -830,6 +830,8 @@ Expected: health, repositories, tasks, and availability tests pass.
 git add apps/backend/package.json package-lock.json packages/domain/src/types.ts apps/backend/src/app.ts apps/backend/src/routes apps/backend/src/http apps/backend/src/services apps/backend/src/repositories/task-repository.ts apps/backend/test
 git commit -m "feat(api): manage tasks and availability"
 ```
+
+**Completed 2026-08-14:** `f255b2f`, `83dea98`, `4d35637`, and `fa798f5`. Independent review loops closed availability idempotence/validation/DST alignment, production persistence, task status/reference invariants, named-zone validation, duplicate exception IDs, and form-associated errors. Final review approved with no findings. Controller verification: backend 39/39 tests, domain 37/37 tests, both typechecks, and `git diff --check` passed. The original resolver fixture correction is retained in the local SDD report and is explicitly not counted as valid RED evidence; later remediation cycles provide valid RED coverage.
 
 ---
 
