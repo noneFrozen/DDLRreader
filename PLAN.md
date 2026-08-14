@@ -961,7 +961,7 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 - `AppShell` exposes semantic header, flow navigation, main workspace, and task/summary aside slots. Desktop is exactly `220px minmax(0, 1fr) 300px`; tablet is two columns with the aside spanning; mobile is one column ordered flow → main → aside and has no horizontal overflow.
 - Initial shell demo is the confirmed conflict-analysis state, not an A/B selector: heading `DDL Radar`, current step `冲突分析`, visible `高风险`, concise 2.5-hour conflict copy, and compact task/summary preview. Future unavailable steps are actual disabled buttons; completed/current steps remain keyboard reachable.
 
-- [ ] **Step 1: Install the frontend test harness and write the failing accessibility test**
+- [x] **Step 1: Install the frontend test harness and write the failing accessibility test**
 
 Add `"test": "vitest run"` to `apps/frontend/package.json` in the same change that creates the frontend's first test. From this task onward, root `npm test` includes the frontend suite; before this task the workspace intentionally has no frontend test script, avoiding Vitest's no-test exit code 1.
 
@@ -973,20 +973,20 @@ expect(screen.getByText("高风险")).toHaveAccessibleName(/高风险/);
 expect(screen.getByRole("button", { name: "冲突分析" })).toHaveAttribute("aria-current", "step");
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [x] **Step 2: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/frontend test -- app-shell.test.tsx`  
 Expected: FAIL because the shell components do not exist.
 
-- [ ] **Step 3: Implement tokens and the three-column shell**
+- [x] **Step 3: Implement tokens and the three-column shell**
 
 Define exact CSS custom properties for the six confirmed colors, 18/20/22px radii, focus ring, shadows, spacing, body/display fonts, and muted risk colors. Use CSS Grid with desktop columns `220px minmax(0, 1fr) 300px`, two columns at 768–1023px, and one column below 768px.
 
-- [ ] **Step 4: Implement semantic navigation and risk badge**
+- [x] **Step 4: Implement semantic navigation and risk badge**
 
 RiskBadge always renders an icon with `aria-hidden="true"` plus visible label text. StepNavigation uses buttons, `aria-current="step"`, and does not make future unavailable steps clickable until their inputs are complete.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/frontend test && npm --workspace @ddl-radar/frontend run build`  
 Expected: tests and production build pass.
@@ -995,6 +995,8 @@ Expected: tests and production build pass.
 git add apps/frontend/package.json package-lock.json apps/frontend/src apps/frontend/test
 git commit -m "feat(ui): establish Organic Productive workspace"
 ```
+
+**Completed 2026-08-14:** `42c9d0d`, `203e4a0`, and `8ed6c39`. Review remediation locked exact confirmed hex fallbacks, equivalent OKLCH progressive tokens, complete color-mix fallbacks, AA contrast for compact text/risk surfaces, active step styling, and the Organic Productive responsive shell. Independent review approved with no findings. Controller verification: root 106/106 tests, all workspace typechecks, frontend production build, and `git diff --check` passed.
 
 ---
 
