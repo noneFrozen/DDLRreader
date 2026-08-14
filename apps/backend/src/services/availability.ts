@@ -20,7 +20,7 @@ function toTime(value: number): string {
 }
 
 function assertTimezone(timezone: string): void {
-  if (timezone !== "UTC" && !/^[A-Za-z_+-]+(?:\/[A-Za-z_+-]+)+$/.test(timezone)) throw new RangeError("invalid timezone");
+  if (/^[+-]\d{2}:\d{2}$/.test(timezone)) throw new RangeError("invalid timezone");
   try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }); } catch { throw new RangeError("invalid timezone"); }
 }
 
@@ -36,6 +36,7 @@ export function validateAvailabilityDefinition(input: AvailabilityDefinition): R
   const errors: Record<string, string> = {};
   try { assertTimezone(input.timezone); } catch { errors.timezone = "请输入有效时区"; }
   input.weeklyRules.forEach((rule) => {
+    try { assertTimezone(rule.timezone); } catch { errors.timezone = "请输入有效时区"; }
     if (!Number.isInteger(rule.weekday) || rule.weekday < 1 || rule.weekday > 7) errors.weekday = "请输入有效星期";
     if (!isTime(rule.startLocalTime)) errors.startLocalTime = "请输入有效时间";
     if (!isTime(rule.endLocalTime, true)) errors.endLocalTime = "请输入有效时间";
@@ -81,15 +82,18 @@ export function normalizeAvailabilityDefinition(input: AvailabilityDefinition): 
     const start = timeToMinutes(rule.startLocalTime); const end = timeToMinutes(rule.endLocalTime, true);
     weeklyParts.push(...splitWeekly(rule.weekday, start, end));
   });
-  const exceptions: AvailabilityException[] = [];
+  const exceptionParts: Array<Omit<AvailabilityException, "id">> = [];
   input.exceptions.forEach((exception) => {
     const start = timeToMinutes(exception.startLocalTime); const end = timeToMinutes(exception.endLocalTime, true);
     const parts = end > start ? [{ date: exception.date, start, end }] : [{ date: exception.date, start, end: MINUTES_PER_DAY }, { date: nextDate(exception.date), start: 0, end }];
-    parts.forEach((part, index) => exceptions.push({
-      id: `exception:${exception.kind}:${part.date}:${toTime(part.start)}:${toTime(part.end)}:${index}`,
+    parts.forEach((part) => exceptionParts.push({
       date: part.date, startLocalTime: toTime(part.start), endLocalTime: toTime(part.end), kind: exception.kind,
     }));
   });
+  const exceptions = exceptionParts.map((exception, ordinal) => ({
+    ...exception,
+    id: `exception:${exception.kind}:${exception.date}:${exception.startLocalTime}:${exception.endLocalTime}:${ordinal}`,
+  }));
   return { timezone: input.timezone, weeklyRules: mergeRules(weeklyParts, input.timezone), exceptions };
 }
 

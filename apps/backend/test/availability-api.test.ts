@@ -84,12 +84,40 @@ describe("availability REST API", () => {
 
   it("accepts named IANA zones and rejects fixed offsets", async () => {
     const instance = await app();
-    for (const timezone of ["UTC", "Asia/Shanghai"]) {
+    for (const timezone of ["UTC", "GMT", "CET", "Asia/Shanghai", "Asia/Kathmandu"]) {
       expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } })).statusCode).toBe(200);
     }
     const offset = await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "+08:00", weeklyRules: [], exceptions: [] } });
     expect(offset.statusCode).toBe(400);
     expect(offset.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+  });
+
+  it("validates every incoming weekly-rule timezone before normalizing it", async () => {
+    const response = await (await app()).inject({
+      method: "PUT", url: "/api/availability",
+      payload: { timezone: "UTC", weeklyRules: [{ id: "bad-zone", weekday: 1, startLocalTime: "09:00", endLocalTime: "10:00", timezone: "+08:00" }], exceptions: [] },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
+  });
+
+  it("preserves duplicate exceptions with distinct stable normalized IDs", async () => {
+    const instance = await app();
+    const payload = {
+      timezone: "UTC", weeklyRules: [],
+      exceptions: [
+        { id: "first", date: "2026-03-09", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" },
+        { id: "second", date: "2026-03-09", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" },
+      ],
+    };
+    const saved = await instance.inject({ method: "PUT", url: "/api/availability", payload });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().exceptions.map((exception: { id: string }) => exception.id)).toEqual([
+      "exception:available:2026-03-09:09:00:10:00:0",
+      "exception:available:2026-03-09:09:00:10:00:1",
+    ]);
+    const stored = await instance.inject({ method: "GET", url: "/api/availability" });
+    expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: stored.json() })).json()).toEqual(stored.json());
   });
 
   it("maps Fastify JSON-schema shape errors to form field errors", async () => {

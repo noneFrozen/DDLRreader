@@ -51,4 +51,18 @@ describe("resolveAvailability", () => {
     }, "2026-03-09T03:00:00Z", "2026-03-09T04:30:00Z");
     expect(blocks.map((block) => block.startAt)).toEqual(["2026-03-09T03:15:00Z", "2026-03-09T03:45:00Z"]);
   });
+
+  it("assigns globally ordinalized IDs to duplicate normalized exceptions", () => {
+    const normalized = normalizeAvailabilityDefinition({
+      timezone: "UTC", weeklyRules: [],
+      exceptions: [
+        { id: "first", date: "2026-03-09", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" },
+        { id: "second", date: "2026-03-09", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" },
+      ],
+    });
+    expect(normalized.exceptions.map((exception) => exception.id)).toEqual([
+      "exception:available:2026-03-09:09:00:10:00:0",
+      "exception:available:2026-03-09:09:00:10:00:1",
+    ]);
+  });
 });

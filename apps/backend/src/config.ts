@@ -1,3 +1,5 @@
 import { join } from "node:path";
 
-export const databasePath = process.env.DATABASE_PATH ?? join(process.env.DATA_DIR ?? "data", "ddl-radar.sqlite");
+export function getDatabasePath(env: NodeJS.ProcessEnv = process.env): string {
+  return env.DATABASE_PATH ?? join(env.DATA_DIR ?? "data", "ddl-radar.sqlite");
+}

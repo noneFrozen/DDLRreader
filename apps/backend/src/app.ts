@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import { mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname } from "node:path";
 import type Database from "better-sqlite3";
 import type { Clock } from "../../../packages/domain/src/types.js";
 import { migrate } from "./db/migrate.js";
+import { getDatabasePath } from "./config.js";
 import { openDatabase } from "./db/connection.js";
 import { installErrorHandler } from "./http/error-handler.js";
 import { SqliteTaskRepository } from "./repositories/task-repository.js";
@@ -15,7 +16,7 @@ export type AppOptions = { database?: Database.Database; clock?: Clock; idFactor
 
 export async function buildApp(options: AppOptions = {}) {
   const app = Fastify({ logger: false });
-  const databasePath = process.env.DATABASE_PATH ?? join(process.env.DATA_DIR ?? "data", "ddl-radar.sqlite");
+  const databasePath = getDatabasePath();
   if (!options.database) mkdirSync(dirname(databasePath), { recursive: true });
   const database = options.database ?? openDatabase(databasePath);
   migrate(database);
