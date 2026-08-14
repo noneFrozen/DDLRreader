@@ -35,4 +35,14 @@ describe("analysis REST API", () => {
       firstConflict: { shortageMinutes: 150 },
     });
   });
+
+  it("enforces the seven-to-fourteen-day planning range", async () => {
+    const database = new Database(":memory:"); databases.push(database);
+    const app = await buildApp({ database }); apps.push(app);
+    for (const planningDays of [6, 15]) {
+      const response = await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays } });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
+    }
+  });
 });

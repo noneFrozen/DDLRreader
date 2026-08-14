@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { Temporal } from "@js-temporal/polyfill";
 import { analyzeConflicts } from "../../../../packages/domain/src/conflict.js";
 import { generatePlan } from "../../../../packages/domain/src/planner.js";
 import { replan } from "../../../../packages/domain/src/replan.js";
@@ -37,7 +38,7 @@ function unscheduledMinutes(unscheduled: readonly { minutes: number }[]): number
 
 function utcInstant(value: string): string | null {
   if (!value.endsWith("Z")) return null;
-  try { return new Date(value).toISOString(); } catch { return null; }
+  try { return Temporal.Instant.from(value).toString(); } catch { return null; }
 }
 
 function isFullyAvailable(startAt: string, endAt: string, availability: readonly AvailabilityBlock[]): boolean {
@@ -136,9 +137,12 @@ export function registerPlanRoutes(
     if (moved) {
       const input = buildPlanningInput({ tasks, availability, clock }, { rangeEnd: plan.rangeEnd });
       if (!isFullyAvailable(startAt, endAt, input.availability)) throw new ApiError(409, { code: "SCHEDULE_UNAVAILABLE", message: "该时间不在可用时间内" });
-      const conflict = plan.blocks.find((block) => block.id !== current.id && new Date(startAt).getTime() < new Date(block.endAt).getTime() && new Date(endAt).getTime() > new Date(block.startAt).getTime());
-      if (conflict?.locked) throw new ApiError(409, { code: "SCHEDULE_CONFLICT", message: "该时间与已锁定安排冲突", details: { conflictingBlockId: conflict.id } });
-      if (conflict) throw new ApiError(409, { code: "SCHEDULE_CONFLICT", message: "该时间与已有安排冲突", details: { conflictingBlockId: conflict.id } });
+      const conflicts = plan.blocks
+        .filter((block) => block.id !== current.id && new Date(startAt).getTime() < new Date(block.endAt).getTime() && new Date(endAt).getTime() > new Date(block.startAt).getTime())
+        .sort((left, right) => left.startAt.localeCompare(right.startAt) || left.endAt.localeCompare(right.endAt) || left.id.localeCompare(right.id));
+      const lockedConflict = conflicts.find((block) => block.locked);
+      if (lockedConflict) throw new ApiError(409, { code: "SCHEDULE_CONFLICT", message: "该时间与已锁定安排冲突", details: { conflictingBlockId: lockedConflict.id } });
+      if (conflicts[0]) throw new ApiError(409, { code: "SCHEDULE_CONFLICT", message: "该时间与已有安排冲突", details: { conflictingBlockId: conflicts[0].id } });
       if (new Date(endAt).getTime() > new Date(task.deadline).getTime() && request.body.allowAfterDeadline !== true) {
         throw new ApiError(409, { code: "DEADLINE_CONFIRMATION_REQUIRED", message: "移动到截止时间后需要确认" });
       }
