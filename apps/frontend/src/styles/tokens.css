@@ -1,0 +1,40 @@
+:root {
+  --color-bg: #e9eee4;
+  --color-bg: oklch(0.938 0.019 122.8);
+  --color-surface: #f6f8f1;
+  --color-surface: oklch(0.976 0.013 111.3);
+  --color-fg: #3d5543;
+  --color-fg: oklch(0.391 0.027 139);
+  --color-muted: #6b876e;
+  --color-muted: oklch(0.551 0.051 135.3);
+  --color-border: #dce7d7;
+  --color-border: oklch(0.896 0.024 127.6);
+  --color-accent: #496a50;
+  --color-accent: oklch(0.421 0.049 138.6);
+  --color-risk-high: #a84232;
+  --color-risk-high: oklch(0.516 0.105 29.6);
+  --color-risk-warn: #a17a1c;
+  --color-risk-warn: oklch(0.581 0.099 79);
+  --color-risk-ok: #6b876e;
+  --color-risk-ok: oklch(0.551 0.051 135.3);
+
+  --radius-organic-sm: 18px;
+  --radius-organic-md: 20px;
+  --radius-organic-lg: 22px;
+  --control-min-height: 44px;
+  --focus-ring: 0 0 0 4px rgba(73, 106, 80, 0.28);
+  --focus-ring: 0 0 0 4px oklch(0.421 0.049 138.6 / 0.28);
+  --shadow-soft: 0 24px 70px rgba(73, 106, 80, 0.15);
+  --shadow-panel: 0 18px 48px rgba(61, 85, 67, 0.11);
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --font-display: "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", SimSun, serif;
+  --font-body: "Noto Sans CJK SC", "Microsoft YaHei UI", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --motion-fast: 180ms;
+}
