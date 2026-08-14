@@ -171,6 +171,22 @@ describe("SQLite repositories", () => {
     expect(() => connection.prepare("UPDATE schedule_blocks SET locked = 2 WHERE id = ?").run("legacy-block-later")).toThrow();
   });
 
+  it("refuses a legacy migration inside a caller transaction without changing the schema or course links", () => {
+    const connection = legacyDatabase();
+    connection.exec("BEGIN");
+    try {
+      expect(() => migrate(connection)).toThrow("migrations cannot run inside a transaction");
+      expect(connection.prepare("SELECT course_id FROM tasks WHERE id = ?").get("legacy-task")).toEqual({ course_id: "legacy-course" });
+      expect(connection.pragma("foreign_keys", { simple: true })).toBe(1);
+      expect((connection.prepare("PRAGMA table_info(courses)").all() as { name: string }[]).map((column) => column.name)).not.toContain("color");
+    } finally {
+      connection.exec("ROLLBACK");
+    }
+    expect(connection.prepare("SELECT course_id FROM tasks WHERE id = ?").get("legacy-task")).toEqual({ course_id: "legacy-course" });
+    expect(connection.pragma("foreign_keys", { simple: true })).toBe(1);
+    expect((connection.prepare("PRAGMA table_info(courses)").all() as { name: string }[]).map((column) => column.name)).not.toContain("color");
+  });
+
   it("round-trips availability definitions without resolving business rules", () => {
     const repository = new SqliteAvailabilityRepository(database());
     repository.replace(availabilityFixture);

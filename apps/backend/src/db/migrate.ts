@@ -174,6 +174,7 @@ function createIndexes(database: Database.Database): void {
 }
 
 export function migrate(database: Database.Database): void {
+  if (database.inTransaction) throw new Error("migrations cannot run inside a transaction");
   const installedVersion = database.pragma("user_version", { simple: true }) as number;
   database.pragma("foreign_keys = OFF");
   try {
