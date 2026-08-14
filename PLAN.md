@@ -11,6 +11,7 @@
 ## Global Constraints
 
 - Planning uses deterministic 30-minute blocks and a 10% capacity buffer.
+- Before persistence or planning, positive task estimates are normalized upward to `toBlockCount(minutes) * 30`; planner-facing `Task.remainingMinutes` is therefore a non-negative multiple of 30.
 - Stable scheduling order is: least slack, earliest deadline, higher priority, earlier creation time.
 - Frozen blocks during replanning are completed, started, or user-locked blocks.
 - All persisted timestamps are UTC ISO strings; display uses an IANA timezone.
@@ -354,7 +355,7 @@ export function effectiveCapacityBlocks(blocks: number, bufferRatio: number): nu
 
 - [ ] **Step 5: Define shared immutable types**
 
-Use discriminated unions for `RiskLevel = "red" | "yellow" | "green"`, `TaskStatus`, and `BlockStatus`. `PlanningInput` contains `now`, `rangeEnd`, `timezone`, `bufferRatio`, readonly tasks, readonly availability blocks, readonly dependencies, and readonly frozen schedule blocks. IDs are strings supplied by callers; domain functions do not generate UUIDs.
+Use discriminated unions for `RiskLevel = "red" | "yellow" | "green"`, `TaskStatus`, and `BlockStatus`. `PlanningInput` contains `now`, `rangeEnd`, `timezone`, `bufferRatio`, readonly tasks, readonly availability blocks, readonly dependencies, and readonly frozen schedule blocks. IDs are strings supplied by callers; domain functions do not generate UUIDs. External estimates may be any non-negative integer minutes, but callers normalize positive values upward with `toBlockCount(minutes) * BLOCK_MINUTES` before constructing a persisted or planner-facing `Task`.
 
 - [ ] **Step 6: Verify exports and boundary failures**
 
@@ -591,7 +592,7 @@ Reject cycles by throwing `DependencyCycleError`. The error exposes `readonly co
 
 - [ ] **Step 6: Prove minute conservation**
 
-Add a test asserting for every task:
+Add a test asserting for every normalized planner-facing task:
 
 ```ts
 expect(scheduledMinutes(result, task.id) + unscheduledMinutes(result, task.id)).toBe(task.remainingMinutes);
@@ -763,7 +764,7 @@ it("returns field errors instead of storing an invalid task", async () => {
 Run: `npm --workspace @ddl-radar/backend test -- tasks-api.test.ts`  
 Expected: FAIL with route not found.
 
-Use Fastify JSON Schema for shape validation and a service-level check for dependency cycles. Return 201 with the stored task, 404 with `{ code: "TASK_NOT_FOUND", message: "任务不存在" }`, and 409 for dependency cycles.
+Use Fastify JSON Schema for shape validation and a service-level check for dependency cycles. Before persistence, normalize every positive `remainingMinutes` value upward with `toBlockCount(minutes) * BLOCK_MINUTES`; zero remains zero. Return the normalized stored task with 201, 404 with `{ code: "TASK_NOT_FOUND", message: "任务不存在" }`, and 409 for dependency cycles.
 
 - [ ] **Step 3: Write failing availability overlap tests**
 
