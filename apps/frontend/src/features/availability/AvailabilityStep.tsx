@@ -8,8 +8,20 @@ const weekdays = [
 ];
 
 function browserTimezone(): string {
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  return timezones.includes(timezone) ? timezone : "Asia/Shanghai";
+  if (typeof globalThis.Intl === "undefined" || typeof globalThis.Intl.DateTimeFormat !== "function") return "Asia/Shanghai";
+  try {
+    const timezone = globalThis.Intl.DateTimeFormat().resolvedOptions().timeZone;
+    return timezones.includes(timezone) ? timezone : "Asia/Shanghai";
+  } catch {
+    return "Asia/Shanghai";
+  }
+}
+
+function serverErrors(error: unknown): Record<string, string> {
+  const apiError = error as { message?: string; fieldErrors?: Record<string, string> };
+  const fieldErrors = apiError.fieldErrors ?? {};
+  const messages = Object.values(fieldErrors);
+  return { ...fieldErrors, form: messages.length ? messages.join(" ") : apiError.message ?? "保存失败" };
 }
 
 type AvailabilityStepProps = {
@@ -51,7 +63,7 @@ export function AvailabilityStep({ api, onSaved }: AvailabilityStepProps) {
       await api.putAvailability(input);
       onSaved(input);
     } catch (error) {
-      setFieldErrors((error as { fieldErrors?: Record<string, string> }).fieldErrors ?? { form: (error as Error).message });
+      setFieldErrors(serverErrors(error));
     } finally {
       setSaving(false);
     }

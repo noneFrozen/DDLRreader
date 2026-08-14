@@ -11,6 +11,14 @@ const priorities: { value: Priority; label: string }[] = [
   { value: "high", label: "高" }, { value: "medium", label: "中" }, { value: "low", label: "低" },
 ];
 
+function serverErrors(error: unknown): Record<string, string> {
+  const apiError = error as { message?: string; fieldErrors?: Record<string, string> };
+  const fieldErrors = { ...(apiError.fieldErrors ?? {}) };
+  if (fieldErrors.remainingMinutes) fieldErrors.hours = fieldErrors.remainingMinutes;
+  const messages = Object.values(fieldErrors);
+  return { ...fieldErrors, form: messages.length ? [...new Set(messages)].join(" ") : apiError.message ?? "保存失败" };
+}
+
 export function TaskForm({ tasks, editingTaskId, onSubmit }: TaskFormProps) {
   const [title, setTitle] = useState("");
   const [deadline, setDeadline] = useState("");
@@ -50,7 +58,7 @@ export function TaskForm({ tasks, editingTaskId, onSubmit }: TaskFormProps) {
       });
       setTitle(""); setDeadline(""); setHours(""); setPriority("medium"); setSplittable(true); setMinimumBlockMinutes("30"); setPredecessorTaskIds([]);
     } catch (error) {
-      setFieldErrors((error as { fieldErrors?: Record<string, string> }).fieldErrors ?? { form: (error as Error).message });
+      setFieldErrors(serverErrors(error));
     } finally {
       setSaving(false);
     }

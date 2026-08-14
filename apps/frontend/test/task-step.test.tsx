@@ -40,4 +40,19 @@ describe("TaskStep", () => {
       priority,
     }));
   });
+
+  it("announces server errors for API field names that do not match form field names", async () => {
+    const user = userEvent.setup();
+    const failure = Object.assign(new Error("任务信息不完整"), { fieldErrors: { remainingMinutes: "剩余工时不能为负数", predecessorTaskIds: "前置任务不存在" } });
+    const fakeApi = { listTasks: vi.fn().mockResolvedValue([]), createTask: vi.fn().mockRejectedValue(failure) };
+    render(<TaskStep api={fakeApi} onTasksChanged={() => undefined} />);
+
+    await user.type(screen.getByLabelText("任务名称"), "待保存任务");
+    fireEvent.change(screen.getByLabelText("截止时间"), { target: { value: "2026-08-21T23:59" } });
+    await user.type(screen.getByLabelText("预计工时（小时）"), "2");
+    await user.click(screen.getByRole("button", { name: "保存任务" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("剩余工时不能为负数");
+    expect(screen.getByRole("alert")).toHaveTextContent("前置任务不存在");
+  });
 });

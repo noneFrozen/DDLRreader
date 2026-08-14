@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createApiClient, type Task } from "../api/client.js";
 import { AppShell } from "../components/AppShell.js";
 import { RiskBadge } from "../components/RiskBadge.js";
@@ -22,6 +22,16 @@ export function App() {
   const unlockedStep = hasAvailability && hasActiveTasks ? 3 : hasAvailability ? 2 : 1;
   const handleTasksChanged = useCallback((nextTasks: readonly Task[]) => setTasks(nextTasks), []);
   const taskSummary = tasks.filter((task) => task.status === "active");
+
+  useEffect(() => {
+    let mounted = true;
+    void Promise.allSettled([api.getAvailability(), api.listTasks()]).then(([availability, savedTasks]) => {
+      if (!mounted) return;
+      if (availability.status === "fulfilled") setHasAvailability(availability.value.weeklyRules.length > 0);
+      if (savedTasks.status === "fulfilled") setTasks(savedTasks.value);
+    });
+    return () => { mounted = false; };
+  }, [api]);
 
   return <AppShell
     header={<><div><p className="section-label">Deadline / Organic planner</p><h1>DDL Radar</h1></div><RiskBadge level="high" label="高风险" /></>}
