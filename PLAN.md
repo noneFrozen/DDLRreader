@@ -102,6 +102,11 @@ export type Task = {
 export type TaskDependency = { predecessorTaskId: string; successorTaskId: string };
 export type WeeklyAvailabilityRule = { id: string; weekday: number; startLocalTime: string; endLocalTime: string; timezone: string };
 export type AvailabilityException = { id: string; date: string; startLocalTime: string; endLocalTime: string; kind: "available" | "unavailable" };
+export type AvailabilityDefinition = {
+  timezone: string;
+  weeklyRules: readonly WeeklyAvailabilityRule[];
+  exceptions: readonly AvailabilityException[];
+};
 export type AvailabilityBlock = { id: string; startAt: IsoUtc; endAt: IsoUtc };
 export type ScheduleBlock = {
   id: string;
@@ -165,8 +170,8 @@ export interface TaskRepository {
   delete(id: string): boolean;
 }
 export interface AvailabilityRepository {
-  replace(input: { timezone: string; weeklyRules: readonly WeeklyAvailabilityRule[]; exceptions: readonly AvailabilityException[] }): void;
-  getResolved(rangeStart: IsoUtc, rangeEnd: IsoUtc): AvailabilityBlock[];
+  replace(input: AvailabilityDefinition): void;
+  get(): AvailabilityDefinition;
 }
 export interface PlanRepository {
   savePlan(plan: StoredPlan): void;
@@ -306,7 +311,7 @@ git commit -m "chore: bootstrap DDL Radar workspaces"
 - Create: `packages/domain/test/time.test.ts`
 
 **Interfaces:**
-- Produces: `Task`, `AvailabilityBlock`, `ScheduleBlock`, `PlanningInput`, `Clock`, `TaskRepository`, `AvailabilityRepository`, `PlanRepository`, `toBlockCount(minutes)`, `effectiveCapacityBlocks(blocks, bufferRatio)`.
+- Produces: `Task`, `AvailabilityDefinition`, `AvailabilityBlock`, `ScheduleBlock`, `PlanningInput`, `Clock`, `TaskRepository`, `AvailabilityRepository`, `PlanRepository`, `toBlockCount(minutes)`, `effectiveCapacityBlocks(blocks, bufferRatio)`.
 - Consumes: No application interfaces.
 
 - [ ] **Step 1: Create the domain workspace with its first source and test files**
@@ -676,6 +681,8 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 **Files:**
 - Modify: `apps/backend/package.json`
 - Modify: `package-lock.json`
+- Modify: `packages/domain/src/types.ts`
+- Modify: `packages/domain/src/index.ts`
 - Create: `apps/backend/src/config.ts`
 - Create: `apps/backend/src/db/connection.ts`
 - Create: `apps/backend/src/db/migrate.ts`
@@ -707,6 +714,12 @@ it("does not replace the active plan when writing a block fails", () => {
   expect(() => repository.savePlan(planWithOverlappingBlocks)).toThrow("schedule blocks overlap");
   expect(repository.getLatest()).toEqual(validPlan);
 });
+
+it("round-trips availability definitions without resolving business rules", () => {
+  const repository = testAvailabilityRepository();
+  repository.replace(availabilityDefinitionFixture);
+  expect(repository.get()).toEqual(availabilityDefinitionFixture);
+});
 ```
 
 - [ ] **Step 3: Run and confirm red**
@@ -720,7 +733,7 @@ Create tables matching SPEC entities: `courses`, `tasks`, `task_dependencies`, `
 
 - [ ] **Step 5: Implement focused repositories**
 
-Repository classes accept a `better-sqlite3` database in their constructor and implement the corresponding domain contracts without redeclaring those interfaces. Convert rows to domain values at one mapping boundary. `SqlitePlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
+Repository classes accept a `better-sqlite3` database in their constructor and implement the corresponding domain contracts without redeclaring those interfaces. `SqliteAvailabilityRepository` stores and returns `AvailabilityDefinition` losslessly; it never expands weekly rules or applies exceptions. Convert rows to domain values at one mapping boundary. `SqlitePlanRepository.savePlan` uses one transaction and validates interval overlap before any insert.
 
 - [ ] **Step 6: Verify and commit**
 
@@ -728,7 +741,7 @@ Run: `npm --workspace @ddl-radar/backend test -- repositories.test.ts`
 Expected: temporary-database tests pass and leave no files in the repository.
 
 ```bash
-git add apps/backend/package.json package-lock.json apps/backend/src/config.ts apps/backend/src/db apps/backend/src/repositories apps/backend/test/repositories.test.ts
+git add apps/backend/package.json package-lock.json packages/domain/src/types.ts packages/domain/src/index.ts apps/backend/src/config.ts apps/backend/src/db apps/backend/src/repositories apps/backend/test/repositories.test.ts
 git commit -m "feat(backend): persist planning data in SQLite"
 ```
 
@@ -743,12 +756,13 @@ git commit -m "feat(backend): persist planning data in SQLite"
 - Create: `apps/backend/src/routes/tasks.ts`
 - Create: `apps/backend/src/routes/availability.ts`
 - Create: `apps/backend/src/http/error-handler.ts`
+- Create: `apps/backend/src/services/availability.ts`
 - Create: `apps/backend/test/tasks-api.test.ts`
 - Create: `apps/backend/test/availability-api.test.ts`
 - Modify: `apps/backend/src/app.ts`
 
 **Interfaces:**
-- Produces: routes `GET/POST/PATCH/DELETE /api/tasks` and `GET/PUT /api/availability`.
+- Produces: routes `GET/POST/PATCH/DELETE /api/tasks` and `GET/PUT /api/availability`, plus `resolveAvailability(definition, rangeStart, rangeEnd): AvailabilityBlock[]`.
 - Consumes: repository contracts from Task 6 and domain normalization from Task 2.
 
 - [ ] **Step 1: Write a failing task validation test**
@@ -786,7 +800,7 @@ Send two overlapping Monday ranges and assert the stored response contains one m
 
 - [ ] **Step 4: Implement rule merge and exception override behavior**
 
-Store normalized non-overlapping rules. Preserve exception kind and date; the application service resolves exceptions over weekly rules when creating domain availability blocks.
+Store normalized non-overlapping rules as an `AvailabilityDefinition`. Preserve exception kind and date. Implement a pure application service that expands weekly rules into 30-minute UTC blocks for the requested range and timezone, then applies date exceptions over those rules; repositories do not contain this business logic.
 
 - [ ] **Step 5: Verify and commit**
 
@@ -835,7 +849,7 @@ Expected: FAIL with route not found.
 
 - [ ] **Step 2: Implement analysis and plan orchestration**
 
-Load tasks and availability through repositories, construct one `PlanningInput`, and call domain functions without duplicating risk rules. `POST /api/plans` requires `{ allowRisk: boolean }`; reject red analysis with 409 unless `allowRisk` is true. Persist `unscheduledMinutes` alongside the plan response.
+Load tasks and the `AvailabilityDefinition` through repositories, resolve it through the Task 7 application service, construct one `PlanningInput`, and call domain functions without duplicating risk rules. `POST /api/plans` requires `{ allowRisk: boolean }`; reject red analysis with 409 unless `allowRisk` is true. Persist `unscheduledMinutes` alongside the plan response.
 
 - [ ] **Step 3: Write and satisfy move-conflict tests**
 
