@@ -133,6 +133,15 @@ describe("SQLite repositories", () => {
     expect(repository.listActive()).toEqual([taskFixture]);
   });
 
+  it("lists active and completed tasks for planning while excluding archived tasks", () => {
+    const repository = new SqliteTaskRepository(database());
+    repository.save(taskFixture);
+    repository.save({ ...taskFixture, id: "completed-task", status: "completed", remainingMinutes: 0 });
+    repository.save({ ...taskFixture, id: "archived-task", status: "archived" });
+
+    expect(repository.listPlanning().map((task) => task.id)).toEqual(["completed-task", "task-1"]);
+  });
+
   it("checks course references through the task repository boundary", () => {
     const connection = database();
     const repository = new SqliteTaskRepository(connection);
@@ -207,6 +216,41 @@ describe("SQLite repositories", () => {
     expect(() => connection.prepare("UPDATE schedule_blocks SET locked = 2 WHERE id = ?").run("legacy-block-later")).toThrow();
   });
 
+  it("upgrades v2 block identities to v3 without losing ordinals and remains idempotent", () => {
+    const connection = database();
+    new SqliteTaskRepository(connection).save(taskFixture);
+    const plans = new SqlitePlanRepository(connection);
+    plans.savePlan({
+      ...validPlan,
+      blocks: [
+        { ...validPlan.blocks[0], id: "later", startAt: "2026-08-14T15:00:00.000Z", endAt: "2026-08-14T16:00:00.000Z" },
+        { ...validPlan.blocks[0], id: "earlier", startAt: "2026-08-14T13:00:00.000Z", endAt: "2026-08-14T14:00:00.000Z" },
+      ],
+    });
+    connection.pragma("foreign_keys = OFF");
+    connection.exec(`
+      ALTER TABLE schedule_blocks RENAME TO schedule_blocks_v3;
+      CREATE TABLE schedule_blocks (
+        id TEXT PRIMARY KEY, plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+        task_id TEXT NOT NULL REFERENCES tasks(id), start_at TEXT NOT NULL, end_at TEXT NOT NULL,
+        status TEXT NOT NULL, locked INTEGER NOT NULL CHECK (locked IN (0, 1)), ordinal INTEGER NOT NULL,
+        UNIQUE(plan_id, ordinal)
+      );
+      INSERT INTO schedule_blocks (id, plan_id, task_id, start_at, end_at, status, locked, ordinal)
+        SELECT id, plan_id, task_id, start_at, end_at, status, locked, ordinal FROM schedule_blocks_v3;
+      DROP TABLE schedule_blocks_v3;
+    `);
+    connection.pragma("foreign_keys = ON");
+    connection.pragma("user_version = 2");
+
+    migrate(connection);
+    migrate(connection);
+
+    expect(plans.getById("plan-1")?.blocks.map((block) => block.id)).toEqual(["later", "earlier"]);
+    expect(connection.pragma("user_version", { simple: true })).toBe(3);
+    expect(connection.prepare("PRAGMA table_info(schedule_blocks)").all().filter((column) => (column as { pk: number }).pk > 0).map((column) => (column as { name: string }).name)).toEqual(["plan_id", "id"]);
+  });
+
   it("refuses a legacy migration inside a caller transaction without changing the schema or course links", () => {
     const connection = legacyDatabase();
     connection.exec("BEGIN");
@@ -267,7 +311,7 @@ describe("SQLite repositories", () => {
   it("retrieves and updates persisted plan blocks", () => {
     const repository = planRepository();
     repository.savePlan(validPlan);
-    repository.updateBlock({ ...validPlan.blocks[0], status: "completed", locked: true });
+    repository.updateBlock(validPlan.id, { ...validPlan.blocks[0], status: "completed", locked: true });
     expect(repository.getById(validPlan.id)).toEqual({
       ...validPlan,
       blocks: [{ ...validPlan.blocks[0], status: "completed", locked: true }],
@@ -277,7 +321,7 @@ describe("SQLite repositories", () => {
   it("does not update a block to a non-positive interval", () => {
     const repository = planRepository();
     repository.savePlan(validPlan);
-    expect(() => repository.updateBlock({ ...validPlan.blocks[0], startAt: "2026-08-14T14:00:00.000Z", endAt: "2026-08-14T14:00:00.000Z" }))
+    expect(() => repository.updateBlock(validPlan.id, { ...validPlan.blocks[0], startAt: "2026-08-14T14:00:00.000Z", endAt: "2026-08-14T14:00:00.000Z" }))
       .toThrow("schedule block end must be after start");
     expect(repository.getById(validPlan.id)).toEqual(validPlan);
   });
@@ -292,7 +336,7 @@ describe("SQLite repositories", () => {
       ],
     };
     repository.savePlan(plan);
-    expect(() => repository.updateBlock({ ...plan.blocks[0], startAt: "2026-08-14T15:30:00.000Z", endAt: "2026-08-14T16:30:00.000Z" }))
+    expect(() => repository.updateBlock(plan.id, { ...plan.blocks[0], startAt: "2026-08-14T15:30:00.000Z", endAt: "2026-08-14T16:30:00.000Z" }))
       .toThrow("schedule blocks overlap");
     expect(repository.getById(plan.id)).toEqual(plan);
   });
@@ -309,6 +353,23 @@ describe("SQLite repositories", () => {
     expect(() => repository.savePlan(failedPlan)).toThrow();
     expect(repository.getById(failedPlan.id)).toBeNull();
     expect(repository.getLatest()).toEqual(validPlan);
+  });
+
+  it("keeps a frozen block ID in separate plan versions and updates only the specified version", () => {
+    const repository = planRepository();
+    const newerPlan: StoredPlan = {
+      ...validPlan,
+      id: "plan-2",
+      version: 2,
+      blocks: [{ ...validPlan.blocks[0], status: "started", locked: true }],
+    };
+    repository.savePlan(validPlan);
+    repository.savePlan(newerPlan);
+
+    repository.updateBlock(newerPlan.id, { ...newerPlan.blocks[0], status: "completed", locked: true });
+
+    expect(repository.getById(validPlan.id)?.blocks).toEqual(validPlan.blocks);
+    expect(repository.getById(newerPlan.id)?.blocks).toEqual([{ ...newerPlan.blocks[0], status: "completed", locked: true }]);
   });
 
   it("stores task booleans as 0 or 1 and rejects other values", () => {

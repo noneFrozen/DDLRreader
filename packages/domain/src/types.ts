@@ -83,6 +83,8 @@ export type StoredPlan = {
 
 export interface TaskRepository {
   listActive(): Task[];
+  /** Tasks that participate in analysis and planning; archived tasks are excluded. */
+  listPlanning(): Task[];
   listDependencies(): TaskDependency[];
   courseExists(id: string): boolean;
   get(id: string): Task | null;
@@ -98,7 +100,7 @@ export interface PlanRepository {
   savePlan(plan: StoredPlan): void;
   getById(id: string): StoredPlan | null;
   getLatest(): StoredPlan | null;
-  updateBlock(block: ScheduleBlock): void;
+  updateBlock(planId: string, block: ScheduleBlock): void;
 }
 
 export type Clock = {

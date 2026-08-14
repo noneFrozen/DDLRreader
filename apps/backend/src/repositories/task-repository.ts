@@ -38,6 +38,10 @@ export class SqliteTaskRepository implements TaskRepository {
     return this.database.prepare("SELECT * FROM tasks WHERE status = 'active' ORDER BY deadline, id").all().map((row) => toTask(row as TaskRow));
   }
 
+  listPlanning(): Task[] {
+    return this.database.prepare("SELECT * FROM tasks WHERE status IN ('active', 'completed') ORDER BY deadline, id").all().map((row) => toTask(row as TaskRow));
+  }
+
   listDependencies(): TaskDependency[] {
     return this.database.prepare("SELECT predecessor_task_id, successor_task_id FROM task_dependencies ORDER BY successor_task_id, predecessor_task_id")
       .all()

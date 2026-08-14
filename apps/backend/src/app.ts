@@ -9,7 +9,10 @@ import { openDatabase } from "./db/connection.js";
 import { installErrorHandler } from "./http/error-handler.js";
 import { SqliteTaskRepository } from "./repositories/task-repository.js";
 import { SqliteAvailabilityRepository } from "./repositories/availability-repository.js";
+import { SqlitePlanRepository } from "./repositories/plan-repository.js";
 import { registerAvailabilityRoutes } from "./routes/availability.js";
+import { registerAnalysisRoutes } from "./routes/analysis.js";
+import { registerPlanRoutes } from "./routes/plans.js";
 import { registerTaskRoutes } from "./routes/tasks.js";
 
 export type AppOptions = { database?: Database.Database; clock?: Clock; idFactory?: () => string };
@@ -24,8 +27,13 @@ export async function buildApp(options: AppOptions = {}) {
   const idFactory = options.idFactory ?? (() => crypto.randomUUID());
   installErrorHandler(app);
   app.get("/health", async () => ({ status: "ok" as const }));
-  registerTaskRoutes(app, new SqliteTaskRepository(database), clock, idFactory);
-  registerAvailabilityRoutes(app, new SqliteAvailabilityRepository(database));
+  const taskRepository = new SqliteTaskRepository(database);
+  const availabilityRepository = new SqliteAvailabilityRepository(database);
+  const planRepository = new SqlitePlanRepository(database);
+  registerTaskRoutes(app, taskRepository, clock, idFactory);
+  registerAvailabilityRoutes(app, availabilityRepository);
+  registerAnalysisRoutes(app, taskRepository, availabilityRepository, clock);
+  registerPlanRoutes(app, taskRepository, availabilityRepository, planRepository, clock, idFactory, (work) => database.transaction(work)());
   if (!options.database) app.addHook("onClose", async () => database.close());
   return app;
 }

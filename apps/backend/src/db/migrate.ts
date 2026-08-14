@@ -1,6 +1,6 @@
 import type Database from "better-sqlite3";
 
-const CURRENT_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
 const LEGACY_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 
 function tableColumns(database: Database.Database, name: string): Set<string> {
@@ -75,14 +75,15 @@ function createCurrentTables(database: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS schedule_blocks (
-      id TEXT PRIMARY KEY,
       plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+      id TEXT NOT NULL,
       task_id TEXT NOT NULL REFERENCES tasks(id),
       start_at TEXT NOT NULL,
       end_at TEXT NOT NULL,
       status TEXT NOT NULL,
       locked INTEGER NOT NULL CHECK (locked IN (0, 1)),
       ordinal INTEGER NOT NULL,
+      PRIMARY KEY (plan_id, id),
       UNIQUE(plan_id, ordinal)
     );
   `);
@@ -145,19 +146,20 @@ function rebuildAvailabilityExceptions(database: Database.Database): void {
   `);
 }
 
-function rebuildScheduleBlocks(database: Database.Database): void {
+function rebuildScheduleBlocks(database: Database.Database, preserveOrdinals: boolean): void {
   database.exec(`
     CREATE TABLE schedule_blocks_new (
-      id TEXT PRIMARY KEY,
       plan_id TEXT NOT NULL REFERENCES plans(id) ON DELETE CASCADE,
+      id TEXT NOT NULL,
       task_id TEXT NOT NULL REFERENCES tasks(id),
       start_at TEXT NOT NULL, end_at TEXT NOT NULL, status TEXT NOT NULL,
       locked INTEGER NOT NULL CHECK (locked IN (0, 1)), ordinal INTEGER NOT NULL,
+      PRIMARY KEY (plan_id, id),
       UNIQUE(plan_id, ordinal)
     );
     INSERT INTO schedule_blocks_new (id, plan_id, task_id, start_at, end_at, status, locked, ordinal)
       SELECT id, plan_id, task_id, start_at, end_at, status,
-        CASE WHEN locked = 1 THEN 1 ELSE 0 END, rowid
+        CASE WHEN locked = 1 THEN 1 ELSE 0 END, ${preserveOrdinals ? "ordinal" : "rowid"}
       FROM schedule_blocks ORDER BY rowid;
     DROP TABLE schedule_blocks;
     ALTER TABLE schedule_blocks_new RENAME TO schedule_blocks;
@@ -186,7 +188,11 @@ export function migrate(database: Database.Database): void {
         if (!tableSql(database, "tasks").includes("CHECK (splittable IN (0, 1))")) rebuildTasks(database);
         if (!tableColumns(database, "availability_rules").has("ordinal")) rebuildAvailabilityRules(database);
         if (!tableColumns(database, "availability_exceptions").has("ordinal")) rebuildAvailabilityExceptions(database);
-        if (!tableColumns(database, "schedule_blocks").has("ordinal") || !tableSql(database, "schedule_blocks").includes("CHECK (locked IN (0, 1))")) rebuildScheduleBlocks(database);
+        const blockColumns = tableColumns(database, "schedule_blocks");
+        const blockSql = tableSql(database, "schedule_blocks");
+        if (!blockColumns.has("ordinal") || !blockSql.includes("CHECK (locked IN (0, 1)") || !blockSql.includes("PRIMARY KEY (plan_id, id)")) {
+          rebuildScheduleBlocks(database, blockColumns.has("ordinal"));
+        }
       }
 
       createIndexes(database);
