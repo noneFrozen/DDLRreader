@@ -1097,7 +1097,7 @@ git commit -m "feat(ui): capture availability and course tasks"
 - Keyboard movement is implemented with start/end datetime controls for each block, not pointer-only drag. If the PATCH returns `409 SCHEDULE_CONFLICT`, restore the previous displayed times and show the conflicting block's task title by resolving `details.conflictingBlockId` against the current plan. If the conflict cannot be resolved, show the server message.
 - Display `plan.unscheduledMinutes` in a persistent warning panel whenever it is greater than 0. Do not remove the availability/task entry steps; users must be able to go back and edit inputs.
 
-- [ ] **Step 1: Write the failing conflict explanation test**
+- [x] **Step 1: Write the failing conflict explanation test**
 
 ```tsx
 render(<AnalysisStep analysis={redAnalysisFixture} />);
@@ -1108,22 +1108,22 @@ expect(screen.getByRole("button", { name: "返回修改" })).toBeEnabled();
 expect(screen.getByRole("button", { name: "生成尽力计划" })).toBeEnabled();
 ```
 
-- [ ] **Step 2: Run red, then implement ready/incomplete/risk states**
+- [x] **Step 2: Run red, then implement ready/incomplete/risk states**
 
 Run: `npm --workspace @ddl-radar/frontend test -- analysis-step.test.tsx`  
 Expected: FAIL because analysis components are missing.
 
 Incomplete analysis shows each issue and no generation button. Red analysis requires a confirmation dialog before sending `{ allowRisk: true }`. Yellow and green use “生成可执行计划”.
 
-- [ ] **Step 3: Write failing plan interaction tests**
+- [x] **Step 3: Write failing plan interaction tests**
 
 Assert completing 60 minutes calls the progress endpoint, locking a block changes its accessible label to “已锁定”, a 409 move response restores the original position and displays the conflicting block title, and an ICS action uses the server-provided blob and filename.
 
-- [ ] **Step 4: Implement week timeline without mouse-only behavior**
+- [x] **Step 4: Implement week timeline without mouse-only behavior**
 
 Render days as headings and schedule blocks as buttons. Provide keyboard-accessible “移动时间” fields in addition to pointer dragging. Use the low-saturation risk palette and course colors; preserve readable text contrast. Display unscheduled minutes in a persistent warning panel.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/frontend test && npm --workspace @ddl-radar/frontend run typecheck`  
 Expected: all frontend tests pass.
@@ -1132,6 +1132,8 @@ Expected: all frontend tests pass.
 git add apps/frontend/src/features apps/frontend/src/app/App.tsx apps/frontend/test
 git commit -m "feat(ui): analyze conflicts and manage generated plans"
 ```
+
+**Completed 2026-08-14:** `1d152db` and `b3b3603`. Implemented analysis step with red/yellow/green risk, incomplete input handling, deadline nodes, firstConflict with task title mapping, and inline error display. Plan step includes week timeline, progress dialog, lock/move controls with conflict resolution, and ICS download. Review fix round addressed three findings: duplicate plan generation via in-flight guard and disabled confirm buttons, unhandled promise rejection in create-plan error handling, and dialog semantics for risk confirmation. Scoped re-review clean. Controller verification: frontend 27/27 tests, root 126/126 tests, all workspace typechecks, frontend production build, and `git diff --check` passed.
 
 ---
 
