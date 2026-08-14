@@ -386,7 +386,7 @@ git commit -m "feat(domain): define planning types and time blocks"
 - Consumes: `PlanningInput`, `Task`, and block helpers from Task 2.
 - Produces: `analyzeConflicts(input: PlanningInput): AnalysisResult` where `AnalysisResult` is either `{ status: "incomplete"; issues: InputIssue[] }` or `{ status: "ready"; risk: RiskLevel; nodes: DeadlineNode[]; firstConflict: ConflictDetail | null; warnings: AnalysisWarning[] }`.
 
-- [ ] **Step 1: Write a failing cumulative-capacity test**
+- [x] **Step 1: Write a failing cumulative-capacity test**
 
 Define the test helpers explicitly instead of relying on undeclared fixtures:
 
@@ -480,16 +480,16 @@ it("lists every cumulative contributor at the first conflict", () => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [x] **Step 2: Run and confirm red**
 
 Run: `npm --workspace @ddl-radar/domain test -- conflict.test.ts`  
 Expected: FAIL because `analyzeConflicts` is missing.
 
-- [ ] **Step 3: Implement cumulative deadline nodes**
+- [x] **Step 3: Implement cumulative deadline nodes**
 
 Group active tasks by identical deadline, sort deadlines ascending, and for each node calculate cumulative required blocks and unique available blocks ending no later than that deadline. Use `effectiveCapacityBlocks` before comparing. Convert block shortage to minutes with `BLOCK_MINUTES`; never round a shortage down. At the first conflicting deadline, `firstConflict.taskIds` contains every active task with remaining work whose deadline is no later than that node—not only tasks newly due at that exact time. Order those IDs deterministically by deadline ascending, priority rank `high > medium > low`, creation time ascending, then task ID ascending.
 
-- [ ] **Step 4: Add failing risk-boundary tests**
+- [x] **Step 4: Add failing risk-boundary tests**
 
 Add separate tests proving:
 
@@ -506,15 +506,15 @@ expect(analyzeConflicts(inputMissingDeadline)).toEqual({
 Run: `npm --workspace @ddl-radar/domain test -- conflict.test.ts`  
 Expected: new assertions fail before expanding the implementation.
 
-- [ ] **Step 5: Implement yellow/green, incomplete input, and non-splittable warnings**
+- [x] **Step 5: Implement yellow/green, incomplete input, and non-splittable warnings**
 
 Yellow means no shortage but minimum slack is no more than 10% of raw cumulative capacity, or an unscheduled non-splittable task has no sufficiently long consecutive availability window before its deadline. Missing required input returns `status: "incomplete"`; it never substitutes zero.
 
-- [ ] **Step 6: Add monotonicity and determinism tests**
+- [x] **Step 6: Add monotonicity and determinism tests**
 
 For fixed fixtures, assert that adding 30 minutes of work cannot improve risk, removing one availability block cannot improve risk, and two calls return deeply equal objects. Use explicit fixture loops rather than random property-test seeds.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 Run: `npm --workspace @ddl-radar/domain test && npm --workspace @ddl-radar/domain run typecheck`  
 Expected: all tests pass with no warnings.
@@ -523,6 +523,8 @@ Expected: all tests pass with no warnings.
 git add packages/domain/src/conflict.ts packages/domain/src/index.ts packages/domain/test/fixtures.ts packages/domain/test/conflict.test.ts
 git commit -m "feat(domain): analyze cumulative deadline conflicts"
 ```
+
+**Completed 2026-08-14:** `752d783 feat(domain): analyze cumulative deadline conflicts`. Independent task review: spec compliant and quality approved; one deferred Minor asks final review to consider explicit tests for the full contributor tie-break chain.
 
 ---
 
