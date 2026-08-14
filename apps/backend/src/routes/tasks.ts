@@ -8,7 +8,7 @@ type TaskInput = Partial<Pick<Task, "courseId" | "title" | "deadline" | "remaini
 type TaskResponse = Task & { predecessorTaskIds: string[] };
 
 const taskProperties = {
-  courseId: { anyOf: [{ type: "string" }, { type: "null" }] },
+  courseId: { type: ["string", "null"] },
   title: { type: "string" }, deadline: { type: "string" }, remainingMinutes: { type: "number" },
   priority: { enum: ["low", "medium", "high"] }, splittable: { type: "boolean" }, minimumBlockMinutes: { type: "number" },
   status: { enum: ["active", "completed", "archived"] }, predecessorTaskIds: { type: "array", items: { type: "string" } },

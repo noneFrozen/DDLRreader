@@ -80,28 +80,37 @@ function normalizedSlots(input: PlanningInput): AvailabilitySlot[] {
   return slots.sort((left, right) => left.startMs - right.startMs || left.id.localeCompare(right.id));
 }
 
-function scoreTask(task: Task, remainingMinutes: number, availableSlots: readonly AvailabilitySlot[]): CandidateScore {
-  const deadlineMs = new Date(task.deadline).getTime();
-  const availableBlocks = availableSlots.filter((slot) => slot.endMs <= deadlineMs).length;
-
+function scoreTask(task: Task, remainingMinutes: number, availableSlotsBeforeDeadline: number): CandidateScore {
   return {
-    slackBlocks: availableBlocks - toBlockCount(remainingMinutes),
-    deadlineMs,
+    slackBlocks: availableSlotsBeforeDeadline - toBlockCount(remainingMinutes),
+    deadlineMs: new Date(task.deadline).getTime(),
     priorityRank: priorityRank[task.priority],
     createdAtMs: new Date(task.createdAt).getTime(),
     taskId: task.id,
   };
 }
 
-function compareCandidates(remaining: ReadonlyMap<string, number>, availableSlots: readonly AvailabilitySlot[], left: Task, right: Task): number {
-  const leftScore = scoreTask(left, remaining.get(left.id)!, availableSlots);
-  const rightScore = scoreTask(right, remaining.get(right.id)!, availableSlots);
+function compareCandidates(left: Task, right: Task, remaining: ReadonlyMap<string, number>, slotsBeforeDeadline: ReadonlyMap<string, number>): number {
+  const leftScore = scoreTask(left, remaining.get(left.id)!, slotsBeforeDeadline.get(left.id) ?? 0);
+  const rightScore = scoreTask(right, remaining.get(right.id)!, slotsBeforeDeadline.get(right.id) ?? 0);
 
   return leftScore.slackBlocks - rightScore.slackBlocks
     || leftScore.deadlineMs - rightScore.deadlineMs
     || rightScore.priorityRank - leftScore.priorityRank
     || leftScore.createdAtMs - rightScore.createdAtMs
     || leftScore.taskId.localeCompare(rightScore.taskId);
+}
+
+function countSlotsBeforeDeadline(slots: readonly AvailabilitySlot[], deadlineMs: number): number {
+  return slots.filter((slot) => slot.endMs <= deadlineMs).length;
+}
+
+function buildSlotsBeforeDeadline(tasks: readonly Task[], slots: readonly AvailabilitySlot[]): Map<string, number> {
+  const result = new Map<string, number>();
+  for (const task of tasks) {
+    result.set(task.id, countSlotsBeforeDeadline(slots, new Date(task.deadline).getTime()));
+  }
+  return result;
 }
 
 function predecessorIdsByTask(input: PlanningInput): ReadonlyMap<string, readonly string[]> {
@@ -166,10 +175,19 @@ export function generatePlan(input: PlanningInput): PlanResult {
   const allocatedSlots = new Set<string>();
   const blocks: ScheduleBlock[] = [];
   const explanation: PlanResult["explanation"] = [];
+  const slotsBeforeDeadline = buildSlotsBeforeDeadline(tasks, slots);
 
   const addBlock = (block: ScheduleBlock, reason: string) => {
     blocks.push(block);
     explanation.push({ taskId: block.taskId, blockId: block.id, reason });
+  };
+
+  const decrementBeforeDeadline = (slotEndMs: number) => {
+    for (const task of tasks) {
+      if (new Date(task.deadline).getTime() >= slotEndMs) {
+        slotsBeforeDeadline.set(task.id, (slotsBeforeDeadline.get(task.id) ?? 0) - 1);
+      }
+    }
   };
 
   let madeAllocation: boolean;
@@ -178,7 +196,7 @@ export function generatePlan(input: PlanningInput): PlanResult {
 
     const readyNonSplittable = tasks
       .filter((task) => !task.splittable && remaining.get(task.id)! > 0 && hasCompletePredecessors(task, predecessors, tasksById, remaining))
-      .sort((left, right) => compareCandidates(remaining, slots.filter((slot) => !allocatedSlots.has(slot.startAt)), left, right));
+      .sort((left, right) => compareCandidates(left, right, remaining, slotsBeforeDeadline));
 
     for (const task of readyNonSplittable) {
       const window = consecutiveWindow(slots, allocatedSlots, task, predecessorFinishMs(task, predecessors, blocks));
@@ -186,7 +204,7 @@ export function generatePlan(input: PlanningInput): PlanResult {
         continue;
       }
       const block = scheduleBlock(task.id, window[0].startAt, window.at(-1)!.endAt);
-      window.forEach((slot) => allocatedSlots.add(slot.startAt));
+      window.forEach((slot) => { allocatedSlots.add(slot.startAt); decrementBeforeDeadline(slot.endMs); });
       remaining.set(task.id, 0);
       addBlock(block, "NON_SPLITTABLE_CONSECUTIVE_WINDOW");
       madeAllocation = true;
@@ -196,11 +214,12 @@ export function generatePlan(input: PlanningInput): PlanResult {
       if (allocatedSlots.has(slot.startAt)) continue;
       const candidate = tasks
         .filter((task) => task.splittable && remaining.get(task.id)! > 0 && slot.endMs <= new Date(task.deadline).getTime() && slot.startMs >= predecessorFinishMs(task, predecessors, blocks) && hasCompletePredecessors(task, predecessors, tasksById, remaining))
-        .sort((left, right) => compareCandidates(remaining, slots.filter((availableSlot) => !allocatedSlots.has(availableSlot.startAt)), left, right))[0];
+        .sort((left, right) => compareCandidates(left, right, remaining, slotsBeforeDeadline))[0];
       if (candidate === undefined) continue;
 
       const block = scheduleBlock(candidate.id, slot.startAt, slot.endAt);
       allocatedSlots.add(slot.startAt);
+      decrementBeforeDeadline(slot.endMs);
       remaining.set(candidate.id, remaining.get(candidate.id)! - BLOCK_MINUTES);
       addBlock(block, "STABLE_CANDIDATE_ORDER");
       madeAllocation = true;

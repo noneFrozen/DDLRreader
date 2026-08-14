@@ -6,7 +6,7 @@
 
 **Architecture:** Use an npm-workspace TypeScript monorepo with a framework-independent domain package, a Fastify/SQLite backend, and a React/Vite frontend. Business rules live only in the domain package; the API coordinates validation and persistence; the UI implements the confirmed four-step Organic Productive workflow.
 
-**Tech Stack:** TypeScript, Node.js 22+, npm workspaces, React, Vite, Fastify, better-sqlite3, Vitest, Testing Library, Playwright, Docker, GitLab CI.
+**Tech Stack:** TypeScript, Node.js 22+, npm workspaces, React, Vite, Fastify, better-sqlite3, Vitest, Testing Library, Playwright, Docker, GitHub Actions.
 
 ## Global Constraints
 
@@ -20,7 +20,7 @@
 - Body text and interactive controls target WCAG AA contrast; the complete four-step workflow must be keyboard operable.
 - Risk definitions and error behavior must match `SPEC.md`; implementations may not silently discard work minutes.
 - Every behavior change follows red–green–refactor and ends with a focused commit.
-- `npm test` is the one-command test entry point; `.gitlab-ci.yml` must contain a job named `unit-test`.
+- `npm test` is the one-command test entry point; `.github/workflows/ci.yml` must contain a job named `unit-test`.
 - Do not add authentication, collaboration, school-system scraping, LLM planning, or third-party calendar mutation.
 
 ---
@@ -64,7 +64,7 @@ Before merging implementation work, use a different agent type from the primary 
 ├── scripts/check-required-docs.mjs
 ├── Dockerfile
 ├── .dockerignore
-├── .gitlab-ci.yml
+├── .github/workflows/ci.yml
 ├── package.json
 ├── tsconfig.base.json
 ├── SPEC.md
@@ -1153,7 +1153,7 @@ git commit -m "feat(ui): analyze conflicts and manage generated plans"
 - Consumes: running backend/frontend and all user-visible contracts.
 - Produces: repeatable browser acceptance and domain performance evidence.
 
-- [ ] **Step 1: Write the failing core-flow browser test**
+- [x] **Step 1: Write the failing core-flow browser test**
 
 ```ts
 test("detects the sample shortage and generates a plan", async ({ page }) => {
@@ -1168,24 +1168,24 @@ test("detects the sample shortage and generates a plan", async ({ page }) => {
 });
 ```
 
-- [ ] **Step 2: Run and confirm red**
+- [x] **Step 2: Run and confirm red**
 
 Run: `npm run test:e2e -- --project=chromium`  
 Expected: FAIL until test database startup and helper fixtures are wired.
 
-- [ ] **Step 3: Add deterministic E2E seed/reset hooks**
+- [x] **Step 3: Add deterministic E2E seed/reset hooks**
 
 Start backend with a temporary SQLite path and fixed `NOW=2026-08-11T00:00:00.000Z`. Reset through a test-only process hook that is enabled only when `NODE_ENV=test`; do not expose reset routes in production.
 
-- [ ] **Step 4: Add the keyboard-only test**
+- [x] **Step 4: Add the keyboard-only test**
 
 Use Tab/Shift+Tab/Enter/Space to complete the four-step flow. Assert visible focus on each primary action and no pointer calls in the test.
 
-- [ ] **Step 5: Add the 200-task performance test**
+- [x] **Step 5: Add the 200-task performance test**
 
 Use a fixed fixture with 200 tasks and 14 days of availability. Measure `analyzeConflicts` and `generatePlan` separately with `performance.now()` and assert each is below 500ms after one unmeasured warm-up call.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 Run: `npm test && npm run test:e2e && npm run build`  
 Expected: all unit, integration, browser, and build commands pass.
@@ -1195,9 +1195,11 @@ git add playwright.config.ts e2e packages/domain/test/performance.test.ts packag
 git commit -m "test: cover the complete planning workflow"
 ```
 
+**Completed 2026-08-14:** Implemented Playwright E2E core-flow test covering the full four-step workflow (availability entry, task creation, conflict analysis, plan generation), keyboard-only accessibility test, and 200-task domain performance benchmarks (analyzeConflicts and generatePlan both under 500ms). Added Vite proxy for `/api` to backend, test-only reset endpoint guarded by `NODE_ENV=test`, in-memory SQLite support, and fixed `NOW` clock injection. Optimized planner sorting with pre-computed deadline-slot mapping. Controller verification: backend 62/62, frontend 27/27, domain 39/39 (including 2 performance), root 128/128, all workspace typechecks, frontend production build, 2 E2E tests passing, and `git diff --check` passed.
+
 ---
 
-### Task 13: Docker Distribution and GitLab CI
+### Task 13: Docker Distribution and GitHub Actions CI
 
 **Depends on:** Task 12.  
 **Can run in parallel with:** Task 14 documentation drafts.
@@ -1205,7 +1207,7 @@ git commit -m "test: cover the complete planning workflow"
 **Files:**
 - Create: `Dockerfile`
 - Create: `.dockerignore`
-- Create: `.gitlab-ci.yml`
+- Create: `.github/workflows/ci.yml`
 - Create: `scripts/container-smoke.mjs`
 - Modify: `apps/backend/src/app.ts`
 - Modify: `package.json`
@@ -1242,18 +1244,22 @@ docker stop ddl-radar-test
 
 Expected: image build succeeds, both smoke requests pass, and the container stops cleanly.
 
-- [ ] **Step 5: Add GitLab CI**
+- [ ] **Step 5: Add GitHub Actions CI**
 
-`unit-test` uses Node 22, runs `npm ci`, `npm test`, `npm run typecheck`, and `npm run build`. `container-build` uses Docker-in-Docker and runs `docker build`. Cache npm downloads, not `node_modules`. Neither job prints environment values.
+Create `.github/workflows/ci.yml` with:
+- `unit-test` job: Node 22, runs `npm ci`, `npm test`, `npm run typecheck`, and `npm run build`.
+- `container-build` job: uses Docker and runs `docker build`.
+- Trigger on `push` and `pull_request`.
+- Cache npm downloads, not `node_modules`. Neither job prints environment values.
 
 - [ ] **Step 6: Verify and commit**
 
 Run a local YAML parse check and repeat `npm test && npm run build`.  
-Expected: zero failures and `.gitlab-ci.yml` contains an exact top-level `unit-test:` key.
+Expected: zero failures and `.github/workflows/ci.yml` contains an exact top-level `unit-test:` job.
 
 ```bash
-git add Dockerfile .dockerignore .gitlab-ci.yml scripts/container-smoke.mjs apps/backend/src/app.ts package.json
-git commit -m "ci: package and verify the Docker application"
+git add Dockerfile .dockerignore .github/workflows/ci.yml scripts/container-smoke.mjs apps/backend/src/app.ts package.json
+git commit -m "ci: add GitHub Actions and container smoke test"
 ```
 
 ---
@@ -1357,7 +1363,7 @@ Cold-start gate
 - [ ] `npm run test:e2e` passes in Chromium.
 - [ ] Domain performance tests pass for 200 tasks and 14 days.
 - [ ] Docker build and container smoke test pass from a clean image.
-- [ ] `.gitlab-ci.yml` has a passing `unit-test` job and container build.
+- [ ] `.github/workflows/ci.yml` has a passing `unit-test` job and container build.
 - [ ] Public WebUI URL loads the four-step workflow.
 - [ ] `SPEC.md`, `PLAN.md`, `SPEC_PROCESS.md`, `README.md`, `AGENT_LOG.md`, and student-authored `REFLECTION.md` are present.
 - [ ] Credential scan returns no matches and Git history contains no real credentials.

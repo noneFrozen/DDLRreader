@@ -109,9 +109,13 @@ export function createApiClient({ baseUrl = "/api", fetcher = fetch }: { baseUrl
       method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
     }),
     listTasks: () => request<Task[]>(fetcher, `${baseUrl}/tasks`),
-    createTask: (input) => request<Task>(fetcher, `${baseUrl}/tasks`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
-    }),
+    createTask: (input) => {
+      const { courseId, ...rest } = input;
+      const payload = courseId !== null ? { courseId, ...rest } : rest;
+      return request<Task>(fetcher, `${baseUrl}/tasks`, {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+      });
+    },
     analyze: (input) => request<AnalysisResult>(fetcher, `${baseUrl}/analysis`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
     }),
