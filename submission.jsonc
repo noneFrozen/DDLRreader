@@ -1,0 +1,14 @@
+{
+  // 请修改以下所有字段中的示例值，确保填入正确的提交信息，否则无法评估和录入成绩
+
+  // 学号
+  "id": "251250221",
+  // 姓名
+  "name": "钟孟平",
+  // 仓库托管链接
+  "repo_url": "https://github.com/noneFrozen/DDLRreader",
+  // 是否部署
+  "is_deployed": false,
+  // 部署或发布链接，上一项如果是 false 此处就是 release 链接，否则就是 deploy 链接
+  "deploy_release_url": "https://github.com/noneFrozen/DDLRreader"
+}
