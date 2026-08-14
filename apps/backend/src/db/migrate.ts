@@ -5,7 +5,10 @@ export function migrate(database: Database.Database): void {
   database.exec(`
     CREATE TABLE IF NOT EXISTS courses (
       id TEXT PRIMARY KEY,
-      name TEXT NOT NULL
+      name TEXT NOT NULL,
+      color TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS tasks (
@@ -15,7 +18,7 @@ export function migrate(database: Database.Database): void {
       deadline TEXT NOT NULL,
       remaining_minutes INTEGER NOT NULL,
       priority TEXT NOT NULL,
-      splittable INTEGER NOT NULL,
+      splittable INTEGER NOT NULL CHECK (splittable IN (0, 1)),
       minimum_block_minutes INTEGER NOT NULL,
       status TEXT NOT NULL,
       created_at TEXT NOT NULL,
@@ -38,7 +41,8 @@ export function migrate(database: Database.Database): void {
       weekday INTEGER NOT NULL,
       start_local_time TEXT NOT NULL,
       end_local_time TEXT NOT NULL,
-      timezone TEXT NOT NULL
+      timezone TEXT NOT NULL,
+      ordinal INTEGER NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS availability_exceptions (
@@ -46,7 +50,8 @@ export function migrate(database: Database.Database): void {
       date TEXT NOT NULL,
       start_local_time TEXT NOT NULL,
       end_local_time TEXT NOT NULL,
-      kind TEXT NOT NULL
+      kind TEXT NOT NULL,
+      ordinal INTEGER NOT NULL UNIQUE
     );
 
     CREATE TABLE IF NOT EXISTS plans (
@@ -66,7 +71,9 @@ export function migrate(database: Database.Database): void {
       start_at TEXT NOT NULL,
       end_at TEXT NOT NULL,
       status TEXT NOT NULL,
-      locked INTEGER NOT NULL
+      locked INTEGER NOT NULL CHECK (locked IN (0, 1)),
+      ordinal INTEGER NOT NULL,
+      UNIQUE(plan_id, ordinal)
     );
 
     CREATE INDEX IF NOT EXISTS idx_tasks_deadline ON tasks(deadline);

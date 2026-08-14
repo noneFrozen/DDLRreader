@@ -23,7 +23,7 @@ function toTask(row: TaskRow): Task {
     deadline: row.deadline,
     remainingMinutes: row.remaining_minutes,
     priority: row.priority,
-    splittable: Boolean(row.splittable),
+    splittable: row.splittable === 1,
     minimumBlockMinutes: row.minimum_block_minutes,
     status: row.status,
     createdAt: row.created_at,
