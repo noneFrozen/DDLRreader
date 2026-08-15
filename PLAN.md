@@ -1358,17 +1358,17 @@ Cold-start gate
 
 ## Final Verification Checklist
 
-- [ ] `npm test` passes with zero failing suites.
-- [ ] `npm run typecheck` passes.
-- [ ] `npm run build` passes.
+- [x] `npm test` passes with zero failing suites.
+- [x] `npm run typecheck` passes.
+- [x] `npm run build` passes.
 - [ ] `npm run test:e2e` passes in Chromium.
 - [ ] Domain performance tests pass for 200 tasks and 14 days.
 - [ ] Docker build and container smoke test pass from a clean image.
 - [ ] `.github/workflows/ci.yml` has a passing `unit-test` job and container build.
 - [ ] Public WebUI URL loads the four-step workflow.
-- [ ] `SPEC.md`, `PLAN.md`, `SPEC_PROCESS.md`, `README.md`, `AGENT_LOG.md`, and student-authored `REFLECTION.md` are present.
+- [x] `SPEC.md`, `PLAN.md`, `SPEC_PROCESS.md`, `README.md`, `AGENT_LOG.md`, and student-authored `REFLECTION.md` are present.
 - [ ] Credential scan returns no matches and Git history contains no real credentials.
-- [ ] `PLAN.md` records each completed task and commit hash.
+- [x] `PLAN.md` records each completed task and commit hash.
 - [ ] Final code review reports no unresolved critical or important issue.
 
 ---
@@ -1386,11 +1386,12 @@ Added after the original 14 tasks, per user request. See docs/superpowers/specs/
 
 Added after the auth module, per user request. See docs/superpowers/specs/2026-08-15-stats-and-schedule-interaction-design.md and docs/superpowers/plans/2026-08-15-stats-and-schedule-interaction.md.
 
-- [x] **Stats Task 1**: domain split/merge functions (splitBlock, mergeBlocks, ScheduleEditError) - commit (stats-split-merge-domain)
-- [x] **Stats Task 2**: backend stats API (GET /api/stats) - commit (stats-backend)
-- [x] **Stats Task 3**: backend split/merge API (POST /api/schedule-blocks/:id/split, POST /api/schedule-blocks/:id/merge) - commit (stats-schedule-editing-api)
-- [x] **Stats Task 4**: frontend stats dashboard (PriorityDonut, DailyLoadBars, StatsDashboard, 5th nav step) - commit (stats-ui)
-- [x] **Stats Task 5**: frontend visual timeline + block editor (WeekTimeline, BlockEditor, PlanStep rewrite, split/merge client methods) - commit (stats-timeline-editor)
-- [x] **Stats Task 6**: frontend drag + undo/redo (useUndoHistory, pointer drag, keyboard nudge, Ctrl+Z/Ctrl+Shift+Z) - commit (stats-drag-undo)
-- [x] **Stats Task 7**: e2e + README/SPEC/PLAN documentation
+- [x] **Stats Task 1**: domain split/merge functions (splitBlock, mergeBlocks, ScheduleEditError) - commit 9288034
+- [x] **Stats Task 2**: backend stats API (GET /api/stats) - commit c7ae2d1
+- [x] **Stats Task 3**: backend split/merge API (POST /api/schedule-blocks/:id/split, POST /api/schedule-blocks/:id/merge) - commit ac7a92a
+- [x] **Stats Task 4**: frontend stats dashboard (PriorityDonut, DailyLoadBars, StatsDashboard, 5th nav step) - commit 28f2393
+- [x] **Stats Task 5**: frontend visual timeline + block editor (WeekTimeline, BlockEditor, PlanStep rewrite, split/merge client methods) - commit f783587
+- [x] **Stats Task 6**: frontend drag + undo/redo (useUndoHistory, pointer drag, keyboard nudge, Ctrl+Z/Ctrl+Shift+Z) - commit f783587
+- [x] **Stats Task 7**: e2e + README/SPEC/PLAN documentation - commit 81d2a81
+- [x] **Usage Guide**: modal overlay with 5-step guide, header button, keyboard dismiss - commit 6879732
 
