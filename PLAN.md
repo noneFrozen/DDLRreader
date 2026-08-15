@@ -1382,3 +1382,15 @@ Added after the original 14 tasks, per user request. See docs/superpowers/specs/
 - [x] **Auth Task 4**: frontend AuthGate + login/register forms + logout - commit 0a3e76f
 - [x] **Auth Task 5**: e2e + README/SPEC/PLAN documentation
 
+## Appendix: Statistics Dashboard & Schedule Interaction (Post-MVP Enhancement)
+
+Added after the auth module, per user request. See docs/superpowers/specs/2026-08-15-stats-and-schedule-interaction-design.md and docs/superpowers/plans/2026-08-15-stats-and-schedule-interaction.md.
+
+- [x] **Stats Task 1**: domain split/merge functions (splitBlock, mergeBlocks, ScheduleEditError) - commit (stats-split-merge-domain)
+- [x] **Stats Task 2**: backend stats API (GET /api/stats) - commit (stats-backend)
+- [x] **Stats Task 3**: backend split/merge API (POST /api/schedule-blocks/:id/split, POST /api/schedule-blocks/:id/merge) - commit (stats-schedule-editing-api)
+- [x] **Stats Task 4**: frontend stats dashboard (PriorityDonut, DailyLoadBars, StatsDashboard, 5th nav step) - commit (stats-ui)
+- [x] **Stats Task 5**: frontend visual timeline + block editor (WeekTimeline, BlockEditor, PlanStep rewrite, split/merge client methods) - commit (stats-timeline-editor)
+- [x] **Stats Task 6**: frontend drag + undo/redo (useUndoHistory, pointer drag, keyboard nudge, Ctrl+Z/Ctrl+Shift+Z) - commit (stats-drag-undo)
+- [x] **Stats Task 7**: e2e + README/SPEC/PLAN documentation
+
