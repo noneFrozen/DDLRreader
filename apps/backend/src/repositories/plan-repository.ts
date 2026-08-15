@@ -61,6 +61,15 @@ export class SqlitePlanRepository implements PlanRepository {
     this.database.prepare("UPDATE schedule_blocks SET task_id = @taskId, start_at = @startAt, end_at = @endAt, status = @status, locked = @locked WHERE plan_id = @planId AND id = @id").run({ ...block, planId, locked: Number(block.locked) });
   }
 
+  replaceBlocks(userId: string, planId: string, blocks: readonly ScheduleBlock[]): void {
+    assertValidBlocks(blocks);
+    this.database.transaction(() => {
+      this.database.prepare("DELETE FROM schedule_blocks WHERE plan_id = ?").run(planId);
+      const insertBlock = this.database.prepare("INSERT INTO schedule_blocks (id, plan_id, task_id, start_at, end_at, status, locked, ordinal) VALUES (@id, @planId, @taskId, @startAt, @endAt, @status, @locked, @ordinal)");
+      blocks.forEach((block, ordinal) => insertBlock.run({ ...block, planId, locked: Number(block.locked), ordinal }));
+    })();
+  }
+
   private toPlan(row: PlanRow): StoredPlan {
     const blocks = this.database.prepare("SELECT id, task_id, start_at, end_at, status, locked FROM schedule_blocks WHERE plan_id = ? ORDER BY ordinal").all(row.id).map((block) => toBlock(block as BlockRow));
     return {

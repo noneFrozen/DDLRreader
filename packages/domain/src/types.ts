@@ -103,6 +103,8 @@ export interface PlanRepository {
   getById(userId: string, id: string): StoredPlan | null;
   getLatest(userId: string): StoredPlan | null;
   updateBlock(userId: string, planId: string, block: ScheduleBlock): void;
+  /** Replace every block of a plan in a transaction, recomputing ordinals. */
+  replaceBlocks(userId: string, planId: string, blocks: readonly ScheduleBlock[]): void;
 }
 
 export type Clock = {

@@ -20,6 +20,7 @@ import { registerPlanRoutes } from "./routes/plans.js";
 import { registerTaskRoutes } from "./routes/tasks.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerStatsRoutes } from "./routes/stats.js";
+import { registerScheduleEditingRoutes } from "./routes/schedule-editing.js";
 
 export type AppOptions = { database?: Database.Database; clock?: Clock; idFactory?: () => string };
 
@@ -45,6 +46,7 @@ export async function buildApp(options: AppOptions = {}) {
   registerAnalysisRoutes(app, taskRepository, availabilityRepository, clock);
   registerStatsRoutes(app, taskRepository, availabilityRepository, planRepository, clock);
   registerPlanRoutes(app, taskRepository, availabilityRepository, planRepository, clock, idFactory, (work) => database.transaction(work)());
+  registerScheduleEditingRoutes(app, taskRepository, planRepository, idFactory);
   if (process.env.NODE_ENV === "test") {
     app.post("/api/test/reset", async (_request, reply) => {
       database.exec("DELETE FROM schedule_blocks");
