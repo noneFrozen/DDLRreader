@@ -26,6 +26,7 @@ export type {
   ReplanInput,
   ProgressResult,
   StoredPlan,
+  User,
   TaskRepository,
   AvailabilityRepository,
   PlanRepository,

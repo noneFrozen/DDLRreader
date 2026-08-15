@@ -15,12 +15,12 @@ const schema = {
 } as const;
 
 export function registerAvailabilityRoutes(app: FastifyInstance, repository: AvailabilityRepository): void {
-  app.get("/api/availability", async () => repository.get());
+  app.get("/api/availability", async (request) => repository.get(request.user!.id));
   app.put<{ Body: AvailabilityDefinition }>("/api/availability", { schema }, async (request) => {
     const errors = validateAvailabilityDefinition(request.body);
     if (Object.keys(errors).length) throw new ApiError(400, { code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: errors });
     const definition = normalizeAvailabilityDefinition(request.body);
-    repository.replace(definition);
+    repository.replace(request.user!.id, definition);
     return definition;
   });
 }

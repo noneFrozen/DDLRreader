@@ -81,26 +81,28 @@ export type StoredPlan = {
   createdAt: IsoUtc;
 };
 
+export type User = { id: string; email: string; createdAt: IsoUtc; updatedAt: IsoUtc };
+
 export interface TaskRepository {
-  listActive(): Task[];
+  listActive(userId: string): Task[];
   /** Tasks that participate in analysis and planning; archived tasks are excluded. */
-  listPlanning(): Task[];
-  listDependencies(): TaskDependency[];
+  listPlanning(userId: string): Task[];
+  listDependencies(userId: string): TaskDependency[];
   courseExists(id: string): boolean;
-  get(id: string): Task | null;
-  save(task: Task): void;
-  saveWithDependencies(task: Task, predecessorTaskIds: readonly string[]): void;
-  delete(id: string): boolean;
+  get(userId: string, id: string): Task | null;
+  save(userId: string, task: Task): void;
+  saveWithDependencies(userId: string, task: Task, predecessorTaskIds: readonly string[]): void;
+  delete(userId: string, id: string): boolean;
 }
 export interface AvailabilityRepository {
-  replace(input: AvailabilityDefinition): void;
-  get(): AvailabilityDefinition;
+  replace(userId: string, input: AvailabilityDefinition): void;
+  get(userId: string): AvailabilityDefinition;
 }
 export interface PlanRepository {
-  savePlan(plan: StoredPlan): void;
-  getById(id: string): StoredPlan | null;
-  getLatest(): StoredPlan | null;
-  updateBlock(planId: string, block: ScheduleBlock): void;
+  savePlan(userId: string, plan: StoredPlan): void;
+  getById(userId: string, id: string): StoredPlan | null;
+  getLatest(userId: string): StoredPlan | null;
+  updateBlock(userId: string, planId: string, block: ScheduleBlock): void;
 }
 
 export type Clock = {

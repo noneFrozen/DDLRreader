@@ -27,29 +27,31 @@ function assertValidBlocks(blocks: readonly ScheduleBlock[]): void {
 export class SqlitePlanRepository implements PlanRepository {
   constructor(private readonly database: Database.Database) {}
 
-  savePlan(plan: StoredPlan): void {
+  savePlan(userId: string, plan: StoredPlan): void {
     assertValidBlocks(plan.blocks);
     this.database.transaction(() => {
-      this.database.prepare("INSERT INTO plans (id, range_start, range_end, version, risk_level, unscheduled_minutes, created_at) VALUES (@id, @rangeStart, @rangeEnd, @version, @riskLevel, @unscheduledMinutes, @createdAt)").run(plan);
+      this.database.prepare("INSERT INTO plans (id, user_id, range_start, range_end, version, risk_level, unscheduled_minutes, created_at) VALUES (@id, @userId, @rangeStart, @rangeEnd, @version, @riskLevel, @unscheduledMinutes, @createdAt)").run({ ...plan, userId });
       const insertBlock = this.database.prepare("INSERT INTO schedule_blocks (id, plan_id, task_id, start_at, end_at, status, locked, ordinal) VALUES (@id, @planId, @taskId, @startAt, @endAt, @status, @locked, @ordinal)");
       plan.blocks.forEach((block, ordinal) => insertBlock.run({ ...block, planId: plan.id, locked: Number(block.locked), ordinal }));
     })();
   }
 
-  getById(id: string): StoredPlan | null {
-    const row = this.database.prepare("SELECT * FROM plans WHERE id = ?").get(id) as PlanRow | undefined;
+  getById(userId: string, id: string): StoredPlan | null {
+    const row = this.database.prepare("SELECT * FROM plans WHERE user_id = ? AND id = ?").get(userId, id) as PlanRow | undefined;
     return row ? this.toPlan(row) : null;
   }
 
-  getLatest(): StoredPlan | null {
-    const row = this.database.prepare("SELECT * FROM plans ORDER BY version DESC LIMIT 1").get() as PlanRow | undefined;
+  getLatest(userId: string): StoredPlan | null {
+    const row = this.database.prepare("SELECT * FROM plans WHERE user_id = ? ORDER BY version DESC LIMIT 1").get(userId) as PlanRow | undefined;
     return row ? this.toPlan(row) : null;
   }
 
-  updateBlock(planId: string, block: ScheduleBlock): void {
+  updateBlock(userId: string, planId: string, block: ScheduleBlock): void {
     assertValidBlocks([block]);
     const stored = this.database.prepare("SELECT 1 FROM schedule_blocks WHERE plan_id = ? AND id = ?").get(planId, block.id);
     if (!stored) return;
+    const owned = this.database.prepare("SELECT 1 FROM plans WHERE user_id = ? AND id = ?").get(userId, planId);
+    if (!owned) return;
     const overlaps = this.database.prepare(`
       SELECT 1 FROM schedule_blocks
       WHERE plan_id = ? AND id <> ? AND start_at < ? AND end_at > ?

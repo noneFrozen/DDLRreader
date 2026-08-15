@@ -63,14 +63,15 @@ export function registerPlanRoutes(
   runInTransaction: (work: () => void) => void,
 ): void {
   app.post<{ Body: CreatePlanRequest }>("/api/plans", { schema: createSchema }, async (request, reply) => {
-    const input = buildPlanningInput({ tasks, availability, clock }, request.body);
+    const userId = request.user!.id;
+    const input = buildPlanningInput({ tasks, availability, clock, userId }, request.body);
     const analysis = analyzeConflicts(input);
     if (analysis.status === "ready" && analysis.risk === "red" && !request.body.allowRisk) {
       throw new ApiError(409, { code: "RISK_CONFIRMATION_REQUIRED", message: "当前风险较高，请确认后生成计划" });
     }
     if (input.availability.length === 0) throw new ApiError(409, { code: "NO_AVAILABILITY", message: "没有可用时间，无法生成计划" });
     const generated = generatePlan(input);
-    const latest = plans.getLatest();
+    const latest = plans.getLatest(userId);
     const plan: StoredPlan = {
       id: idFactory(),
       rangeStart: input.now,
@@ -81,39 +82,41 @@ export function registerPlanRoutes(
       blocks: generated.blocks,
       createdAt: input.now,
     };
-    plans.savePlan(plan);
+    plans.savePlan(userId, plan);
     return reply.status(201).send({ plan, unscheduled: generated.unscheduled, explanation: generated.explanation, analysis });
   });
 
   app.post<{ Params: { id: string } }>("/api/plans/:id/replan", async (request, reply) => {
-    const previous = plans.getById(request.params.id);
+    const userId = request.user!.id;
+    const previous = plans.getById(userId, request.params.id);
     if (!previous) throw new ApiError(404, { code: "PLAN_NOT_FOUND", message: "计划不存在" });
     const now = clock.now().toISOString();
     if (new Date(previous.rangeEnd).getTime() <= new Date(now).getTime()) {
       throw new ApiError(409, { code: "PLAN_RANGE_EXPIRED", message: "计划范围已过期" });
     }
-    const input = buildPlanningInput({ tasks, availability, clock }, { rangeEnd: previous.rangeEnd });
+    const input = buildPlanningInput({ tasks, availability, clock, userId }, { rangeEnd: previous.rangeEnd });
     const analysis = analyzeConflicts(input);
     const generated = replan({ ...input, previousBlocks: previous.blocks });
-    const latest = plans.getLatest();
+    const latest = plans.getLatest(userId);
     const plan: StoredPlan = {
       id: idFactory(), rangeStart: input.now, rangeEnd: previous.rangeEnd,
       version: (latest?.version ?? 0) + 1,
       riskLevel: analysis.status === "ready" ? analysis.risk : "red",
       unscheduledMinutes: unscheduledMinutes(generated.unscheduled), blocks: generated.blocks, createdAt: input.now,
     };
-    plans.savePlan(plan);
+    plans.savePlan(userId, plan);
     return reply.status(201).send({ plan, unscheduled: generated.unscheduled, explanation: generated.explanation, analysis });
   });
 
   app.get<{ Params: { id: string } }>("/api/plans/:id/export.ics", async (request, reply) => {
-    const plan = plans.getById(request.params.id);
+    const userId = request.user!.id;
+    const plan = plans.getById(userId, request.params.id);
     if (!plan) throw new ApiError(404, { code: "PLAN_NOT_FOUND", message: "计划不存在" });
-    const taskMap = new Map(plan.blocks.map((block) => [block.taskId, tasks.get(block.taskId)]));
+    const taskMap = new Map(plan.blocks.map((block) => [block.taskId, tasks.get(userId, block.taskId)]));
     if ([...taskMap.values()].some((task) => task === null)) {
       throw new ApiError(409, { code: "PLAN_TASK_MISSING", message: "计划中的任务不存在" });
     }
-    const definition = availability.get();
+    const definition = availability.get(userId);
     const ics = createIcs(plan, new Map([...taskMap].map(([id, task]) => [id, task!])), definition.timezone);
     return reply
       .header("content-type", "text/calendar; charset=utf-8")
@@ -122,11 +125,12 @@ export function registerPlanRoutes(
   });
 
   app.patch<{ Params: { id: string }; Body: SchedulePatch }>("/api/schedule-blocks/:id", { schema: scheduleSchema }, async (request) => {
-    const plan = plans.getLatest();
+    const userId = request.user!.id;
+    const plan = plans.getLatest(userId);
     if (!plan) throw new ApiError(404, { code: "PLAN_NOT_FOUND", message: "计划不存在" });
     const current = plan.blocks.find((block) => block.id === request.params.id);
     if (!current) throw new ApiError(404, { code: "SCHEDULE_BLOCK_NOT_FOUND", message: "安排不存在" });
-    const task = tasks.get(current.taskId);
+    const task = tasks.get(userId, current.taskId);
     if (!task) throw new ApiError(409, { code: "PLAN_TASK_MISSING", message: "计划中的任务不存在" });
     const startAt = request.body.startAt === undefined ? current.startAt : utcInstant(request.body.startAt);
     const endAt = request.body.endAt === undefined ? current.endAt : utcInstant(request.body.endAt);
@@ -135,7 +139,7 @@ export function registerPlanRoutes(
     }
     const moved = startAt !== current.startAt || endAt !== current.endAt;
     if (moved) {
-      const input = buildPlanningInput({ tasks, availability, clock }, { rangeEnd: plan.rangeEnd });
+      const input = buildPlanningInput({ tasks, availability, clock, userId }, { rangeEnd: plan.rangeEnd });
       if (!isFullyAvailable(startAt, endAt, input.availability)) throw new ApiError(409, { code: "SCHEDULE_UNAVAILABLE", message: "该时间不在可用时间内" });
       const conflicts = plan.blocks
         .filter((block) => block.id !== current.id && new Date(startAt).getTime() < new Date(block.endAt).getTime() && new Date(endAt).getTime() > new Date(block.startAt).getTime())
@@ -157,8 +161,8 @@ export function registerPlanRoutes(
       updatedTask = { ...task, remainingMinutes: progress.remainingMinutes, status: progress.remainingMinutes === 0 ? "completed" : "active", updatedAt: clock.now().toISOString() };
     }
     runInTransaction(() => {
-      if (progress) tasks.save(updatedTask);
-      plans.updateBlock(plan.id, block);
+      if (progress) tasks.save(userId, updatedTask);
+      plans.updateBlock(userId, plan.id, block);
     });
     return progress ? { block, task: updatedTask, progress } : { block };
   });

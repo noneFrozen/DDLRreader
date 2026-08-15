@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
+import { seedSession } from "./helpers.js";
 
 describe("analysis REST API", () => {
   const databases: Database.Database[] = [];
@@ -17,16 +18,17 @@ describe("analysis REST API", () => {
     const ids = ["task-a", "task-b", "task-c"];
     const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => ids.shift()! });
     apps.push(app);
-    await app.inject({ method: "PUT", url: "/api/availability", payload: {
+    const cookie = seedSession(database);
+    await app.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: {
       timezone: "Asia/Shanghai",
       weeklyRules: [{ id: "wed", weekday: 3, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "Asia/Shanghai" }],
       exceptions: [],
     } });
     for (const [title, remainingMinutes] of [["软件工程", 120], ["算法", 150], ["数据库", 30]] as const) {
-      await app.inject({ method: "POST", url: "/api/tasks", payload: { title, deadline: "2026-08-13T23:00:00.000Z", remainingMinutes } });
+      await app.inject({ method: "POST", url: "/api/tasks", headers: { cookie }, payload: { title, deadline: "2026-08-13T23:00:00.000Z", remainingMinutes } });
     }
 
-    const response = await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays: 7 } });
+    const response = await app.inject({ method: "POST", url: "/api/analysis", headers: { cookie }, payload: { planningDays: 7 } });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toMatchObject({
@@ -39,8 +41,9 @@ describe("analysis REST API", () => {
   it("enforces the seven-to-fourteen-day planning range", async () => {
     const database = new Database(":memory:"); databases.push(database);
     const app = await buildApp({ database }); apps.push(app);
+    const cookie = seedSession(database);
     for (const planningDays of [6, 15]) {
-      const response = await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays } });
+      const response = await app.inject({ method: "POST", url: "/api/analysis", headers: { cookie }, payload: { planningDays } });
       expect(response.statusCode).toBe(400);
       expect(response.json()).toMatchObject({ code: "VALIDATION_ERROR" });
     }
@@ -49,9 +52,10 @@ describe("analysis REST API", () => {
   it("uses the default buffer and honors an explicit buffer override", async () => {
     const database = new Database(":memory:"); databases.push(database);
     const app = await buildApp({ database, clock: { now: () => new Date("2026-08-10T00:00:00.000Z") }, idFactory: () => "task-1" }); apps.push(app);
-    await app.inject({ method: "PUT", url: "/api/availability", payload: { timezone: "UTC", weeklyRules: [{ id: "m", weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "UTC" }], exceptions: [] } });
-    await app.inject({ method: "POST", url: "/api/tasks", payload: { title: "Task", deadline: "2026-08-10T12:00:00.000Z", remainingMinutes: 180 } });
-    expect((await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays: 7 } })).json()).toMatchObject({ risk: "red", firstConflict: { shortageMinutes: 30 } });
-    expect((await app.inject({ method: "POST", url: "/api/analysis", payload: { planningDays: 7, bufferRatio: 0 } })).json()).toMatchObject({ risk: "yellow" });
+    const cookie = seedSession(database);
+    await app.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: { timezone: "UTC", weeklyRules: [{ id: "m", weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "UTC" }], exceptions: [] } });
+    await app.inject({ method: "POST", url: "/api/tasks", headers: { cookie }, payload: { title: "Task", deadline: "2026-08-10T12:00:00.000Z", remainingMinutes: 180 } });
+    expect((await app.inject({ method: "POST", url: "/api/analysis", headers: { cookie }, payload: { planningDays: 7 } })).json()).toMatchObject({ risk: "red", firstConflict: { shortageMinutes: 30 } });
+    expect((await app.inject({ method: "POST", url: "/api/analysis", headers: { cookie }, payload: { planningDays: 7, bufferRatio: 0 } })).json()).toMatchObject({ risk: "yellow" });
   });
 });

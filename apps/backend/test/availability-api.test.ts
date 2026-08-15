@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { afterEach, describe, expect, it } from "vitest";
 import { buildApp } from "../src/app.js";
+import { seedSession } from "./helpers.js";
 
 describe("availability REST API", () => {
   const databases: Database.Database[] = [];
@@ -16,13 +17,14 @@ describe("availability REST API", () => {
     databases.push(database);
     const instance = await buildApp({ database });
     apps.push(instance);
-    return instance;
+    const cookie = seedSession(database);
+    return { instance, cookie };
   }
 
   it("merges overlapping and adjacent weekly ranges into a normalized definition", async () => {
-    const instance = await app();
+    const { instance, cookie } = await app();
     const saved = await instance.inject({
-      method: "PUT", url: "/api/availability",
+      method: "PUT", url: "/api/availability", headers: { cookie },
       payload: {
         timezone: "America/New_York",
         weeklyRules: [
@@ -38,12 +40,13 @@ describe("availability REST API", () => {
       weeklyRules: [{ weekday: 1, startLocalTime: "09:00", endLocalTime: "12:00", timezone: "America/New_York" }],
       exceptions: [{ date: "2026-03-09", startLocalTime: "14:00", endLocalTime: "15:00", kind: "available" }],
     });
-    expect((await instance.inject({ method: "GET", url: "/api/availability" })).json()).toEqual(saved.json());
+    expect((await instance.inject({ method: "GET", url: "/api/availability", headers: { cookie } })).json()).toEqual(saved.json());
   });
 
   it("rejects equal local-time endpoints and invalid IANA timezones", async () => {
-    const response = await (await app()).inject({
-      method: "PUT", url: "/api/availability",
+    const { instance, cookie } = await app();
+    const response = await instance.inject({
+      method: "PUT", url: "/api/availability", headers: { cookie },
       payload: { timezone: "Mars/Olympus", weeklyRules: [{ id: "equal", weekday: 1, startLocalTime: "09:00", endLocalTime: "09:00", timezone: "Mars/Olympus" }], exceptions: [] },
     });
     expect(response.statusCode).toBe(400);
@@ -54,21 +57,22 @@ describe("availability REST API", () => {
   });
 
   it("round-trips normalized overnight definitions through GET and PUT", async () => {
-    const instance = await app();
+    const { instance, cookie } = await app();
     const saved = await instance.inject({
-      method: "PUT", url: "/api/availability",
+      method: "PUT", url: "/api/availability", headers: { cookie },
       payload: { timezone: "Asia/Shanghai", weeklyRules: [{ id: "overnight", weekday: 1, startLocalTime: "22:00", endLocalTime: "02:00", timezone: "Asia/Shanghai" }], exceptions: [] },
     });
-    const stored = await instance.inject({ method: "GET", url: "/api/availability" });
-    const replaced = await instance.inject({ method: "PUT", url: "/api/availability", payload: stored.json() });
+    const stored = await instance.inject({ method: "GET", url: "/api/availability", headers: { cookie } });
+    const replaced = await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: stored.json() });
     expect(saved.statusCode).toBe(200);
     expect(replaced.statusCode).toBe(200);
     expect(replaced.json()).toEqual(stored.json());
   });
 
   it("returns Chinese field errors for semantic dates and local-time endpoints", async () => {
-    const response = await (await app()).inject({
-      method: "PUT", url: "/api/availability",
+    const { instance, cookie } = await app();
+    const response = await instance.inject({
+      method: "PUT", url: "/api/availability", headers: { cookie },
       payload: {
         timezone: "UTC",
         weeklyRules: [{ id: "bad-rule", weekday: 1, startLocalTime: "25:00", endLocalTime: "10:60", timezone: "UTC" }],
@@ -83,22 +87,22 @@ describe("availability REST API", () => {
   });
 
   it("accepts named IANA zones and rejects fixed offsets", async () => {
-    const instance = await app();
+    const { instance, cookie } = await app();
     for (const timezone of ["UTC", "GMT", "CET", "Asia/Shanghai", "Asia/Kathmandu"]) {
-      expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } })).statusCode).toBe(200);
+      expect((await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: { timezone, weeklyRules: [], exceptions: [] } })).statusCode).toBe(200);
     }
     for (const timezone of ["+08:00", "-05:30", "+0800", "-0800"]) {
-      const offset = await instance.inject({ method: "PUT", url: "/api/availability", payload: { timezone, weeklyRules: [], exceptions: [] } });
+      const offset = await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: { timezone, weeklyRules: [], exceptions: [] } });
       expect(offset.statusCode).toBe(400);
       expect(offset.json()).toEqual({ code: "VALIDATION_ERROR", message: "可用时间信息不完整", fieldErrors: { timezone: "请输入有效时区" } });
     }
   });
 
   it("validates every incoming weekly-rule timezone before normalizing it", async () => {
-    const instance = await app();
+    const { instance, cookie } = await app();
     for (const timezone of ["+08:00", "-05:30", "+0800", "-0800"]) {
       const response = await instance.inject({
-        method: "PUT", url: "/api/availability",
+        method: "PUT", url: "/api/availability", headers: { cookie },
         payload: { timezone: "UTC", weeklyRules: [{ id: "bad-zone", weekday: 1, startLocalTime: "09:00", endLocalTime: "10:00", timezone }], exceptions: [] },
       });
       expect(response.statusCode).toBe(400);
@@ -107,7 +111,7 @@ describe("availability REST API", () => {
   });
 
   it("preserves duplicate exceptions with distinct stable normalized IDs", async () => {
-    const instance = await app();
+    const { instance, cookie } = await app();
     const payload = {
       timezone: "UTC", weeklyRules: [],
       exceptions: [
@@ -115,18 +119,19 @@ describe("availability REST API", () => {
         { id: "second", date: "2026-03-09", startLocalTime: "09:00", endLocalTime: "10:00", kind: "available" },
       ],
     };
-    const saved = await instance.inject({ method: "PUT", url: "/api/availability", payload });
+    const saved = await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload });
     expect(saved.statusCode).toBe(200);
     expect(saved.json().exceptions.map((exception: { id: string }) => exception.id)).toEqual([
       "exception:available:2026-03-09:09:00:10:00:0",
       "exception:available:2026-03-09:09:00:10:00:1",
     ]);
-    const stored = await instance.inject({ method: "GET", url: "/api/availability" });
-    expect((await instance.inject({ method: "PUT", url: "/api/availability", payload: stored.json() })).json()).toEqual(stored.json());
+    const stored = await instance.inject({ method: "GET", url: "/api/availability", headers: { cookie } });
+    expect((await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: stored.json() })).json()).toEqual(stored.json());
   });
 
   it("maps Fastify JSON-schema shape errors to form field errors", async () => {
-    const response = await (await app()).inject({ method: "PUT", url: "/api/availability", payload: { weeklyRules: [], exceptions: [] } });
+    const { instance, cookie } = await app();
+    const response = await instance.inject({ method: "PUT", url: "/api/availability", headers: { cookie }, payload: { weeklyRules: [], exceptions: [] } });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ code: "VALIDATION_ERROR", message: "请求格式不正确", fieldErrors: { timezone: "请输入有效字段" } });
   });

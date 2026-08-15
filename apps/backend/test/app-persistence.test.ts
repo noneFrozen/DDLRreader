@@ -22,11 +22,13 @@ describe("production app database composition", () => {
     process.env.DATABASE_PATH = join(directory, "nested", "ddl-radar.sqlite");
     const first = await buildApp();
     apps.push(first);
-    expect((await first.inject({ method: "POST", url: "/api/tasks", payload: { title: "Persist", deadline: "2026-08-20T12:00:00Z", remainingMinutes: 30 } })).statusCode).toBe(201);
+    const register = await first.inject({ method: "POST", url: "/api/auth/register", payload: { email: "persist@example.com", password: "password123" } });
+    const cookie = (register.headers["set-cookie"] as string).split(";")[0];
+    expect((await first.inject({ method: "POST", url: "/api/tasks", headers: { cookie }, payload: { title: "Persist", deadline: "2026-08-20T12:00:00Z", remainingMinutes: 30 } })).statusCode).toBe(201);
     await first.close();
     apps.splice(apps.indexOf(first), 1);
     const second = await buildApp();
     apps.push(second);
-    expect((await second.inject({ method: "GET", url: "/api/tasks" })).json()).toHaveLength(1);
+    expect((await second.inject({ method: "GET", url: "/api/tasks", headers: { cookie } })).json()).toHaveLength(1);
   });
 });

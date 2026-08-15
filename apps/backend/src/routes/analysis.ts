@@ -14,6 +14,6 @@ const schema = {
 
 export function registerAnalysisRoutes(app: FastifyInstance, tasks: TaskRepository, availability: AvailabilityRepository, clock: Clock): void {
   app.post<{ Body: AnalysisRequest }>("/api/analysis", { schema }, async (request) => {
-    return analyzeConflicts(buildPlanningInput({ tasks, availability, clock }, request.body));
+    return analyzeConflicts(buildPlanningInput({ tasks, availability, clock, userId: request.user!.id }, request.body));
   });
 }

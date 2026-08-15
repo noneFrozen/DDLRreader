@@ -8,13 +8,17 @@ import { migrate } from "./db/migrate.js";
 import { getDatabasePath } from "./config.js";
 import { openDatabase } from "./db/connection.js";
 import { installErrorHandler } from "./http/error-handler.js";
+import { installAuth } from "./http/auth.js";
 import { SqliteTaskRepository } from "./repositories/task-repository.js";
 import { SqliteAvailabilityRepository } from "./repositories/availability-repository.js";
 import { SqlitePlanRepository } from "./repositories/plan-repository.js";
+import { SqliteUserRepository } from "./repositories/user-repository.js";
+import { SqliteSessionRepository } from "./repositories/session-repository.js";
 import { registerAvailabilityRoutes } from "./routes/availability.js";
 import { registerAnalysisRoutes } from "./routes/analysis.js";
 import { registerPlanRoutes } from "./routes/plans.js";
 import { registerTaskRoutes } from "./routes/tasks.js";
+import { registerAuthRoutes } from "./routes/auth.js";
 
 export type AppOptions = { database?: Database.Database; clock?: Clock; idFactory?: () => string };
 
@@ -31,6 +35,10 @@ export async function buildApp(options: AppOptions = {}) {
   const taskRepository = new SqliteTaskRepository(database);
   const availabilityRepository = new SqliteAvailabilityRepository(database);
   const planRepository = new SqlitePlanRepository(database);
+  const userRepository = new SqliteUserRepository(database);
+  const sessionRepository = new SqliteSessionRepository(database);
+  registerAuthRoutes(app, userRepository, sessionRepository, clock, idFactory);
+  installAuth(app, userRepository, sessionRepository, clock);
   registerTaskRoutes(app, taskRepository, clock, idFactory);
   registerAvailabilityRoutes(app, availabilityRepository);
   registerAnalysisRoutes(app, taskRepository, availabilityRepository, clock);
@@ -44,6 +52,8 @@ export async function buildApp(options: AppOptions = {}) {
       database.exec("DELETE FROM availability_exceptions");
       database.exec("DELETE FROM availability_rules");
       database.exec("DELETE FROM availability_settings");
+      database.exec("DELETE FROM sessions");
+      database.exec("DELETE FROM users");
       return reply.status(200).send({ status: "reset" });
     });
   }

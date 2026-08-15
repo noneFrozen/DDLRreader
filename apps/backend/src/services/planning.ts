@@ -6,6 +6,7 @@ export type PlanningDependencies = {
   tasks: TaskRepository;
   availability: AvailabilityRepository;
   clock: Clock;
+  userId: string;
 };
 
 export type PlanningRequest = {
@@ -21,9 +22,9 @@ export function rangeEndFor(now: string, timezone: string, planningDays: number)
 
 export function buildPlanningInput(dependencies: PlanningDependencies, request: PlanningRequest): PlanningInput {
   const now = dependencies.clock.now().toISOString();
-  const definition = dependencies.availability.get();
+  const definition = dependencies.availability.get(dependencies.userId);
   const rangeEnd = request.rangeEnd ?? rangeEndFor(now, definition.timezone, request.planningDays!);
-  const tasks = dependencies.tasks.listPlanning();
+  const tasks = dependencies.tasks.listPlanning(dependencies.userId);
   const taskIds = new Set(tasks.map((task) => task.id));
   return {
     now,
@@ -31,7 +32,7 @@ export function buildPlanningInput(dependencies: PlanningDependencies, request: 
     timezone: definition.timezone,
     bufferRatio: request.bufferRatio ?? 0.1,
     tasks,
-    dependencies: dependencies.tasks.listDependencies().filter((edge) => taskIds.has(edge.predecessorTaskId) && taskIds.has(edge.successorTaskId)),
+    dependencies: dependencies.tasks.listDependencies(dependencies.userId).filter((edge) => taskIds.has(edge.predecessorTaskId) && taskIds.has(edge.successorTaskId)),
     availability: resolveAvailability(definition, now, rangeEnd),
     frozenBlocks: request.frozenBlocks ?? [],
   };
