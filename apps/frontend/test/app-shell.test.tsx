@@ -35,6 +35,7 @@ describe("Organic Productive workspace", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "登出" })).toBeVisible());
     await user.tab();
+    await user.tab();
     expect(screen.getByRole("button", { name: "登出" })).toHaveFocus();
   });
 

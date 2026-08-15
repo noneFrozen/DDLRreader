@@ -246,3 +246,16 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-r
 .plan-step__tools { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .plan-step__tools button:not(.entry-submit) { padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-fg); font-weight: 700; background: var(--color-surface); }
 @media (max-width: 767px) { .week-timeline { grid-template-columns: minmax(0, 1fr); } .block-editor__move { grid-template-columns: minmax(0, 1fr); } }
+
+.guide-overlay { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; padding: var(--space-4); background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(4px); }
+.guide-dialog { max-width: 640px; max-height: 85vh; width: 100%; overflow-y: auto; padding: var(--space-6); border: 1px solid var(--color-border); border-radius: var(--radius-organic-lg); background: var(--color-surface); box-shadow: var(--shadow-soft); }
+.guide-dialog:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.guide-dialog__header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-5); padding-bottom: var(--space-4); border-bottom: 1px solid var(--color-border); }
+.guide-dialog__header h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.6rem, 2.5vw, 2.2rem); }
+.guide-dialog__close { min-height: 0; padding: 4px 10px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-fg); font-size: 1.1rem; line-height: 1; background: transparent; }
+.guide-step { margin-bottom: var(--space-5); }
+.guide-step h3 { margin: 0 0 var(--space-2); font-family: var(--font-display); font-size: 1.15rem; }
+.guide-step__num { display: inline-block; margin-right: var(--space-2); padding: 2px 8px; border-radius: 6px; color: var(--color-surface); font-family: var(--font-mono); font-size: .8rem; font-weight: 700; background: var(--color-accent); }
+.guide-step p { margin: 0; color: var(--color-text-accessible); line-height: 1.7; }
+.guide-step ul { margin: var(--space-2) 0 0; padding-left: var(--space-5); color: var(--color-text-accessible); line-height: 1.8; }
+.guide-step li::marker { color: var(--color-accent); }

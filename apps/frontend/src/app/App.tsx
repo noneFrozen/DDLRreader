@@ -7,6 +7,7 @@ import { AvailabilityStep } from "../features/availability/AvailabilityStep.js";
 import { AnalysisStep } from "../features/analysis/AnalysisStep.js";
 import { PlanStep } from "../features/plan/PlanStep.js";
 import { StatsDashboard } from "../features/stats/StatsDashboard.js";
+import { UsageGuide } from "../components/UsageGuide.js";
 import { TaskStep } from "../features/tasks/TaskStep.js";
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
   const [user, setUser] = useState<User | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
   const hasActiveTasks = tasks.some((task) => task.status === "active");
   const unlockedStep = plan ? 5 : hasAvailability && hasActiveTasks ? 3 : hasAvailability ? 2 : 1;
   const handleTasksChanged = useCallback((nextTasks: readonly Task[]) => setTasks(nextTasks), []);
@@ -70,7 +72,7 @@ export function App() {
 
   return <AuthGate api={api} onUserChange={setUser}>
     <AppShell
-      header={<><div><p className="section-label">Deadline / Organic planner</p><h1>DDL Radar</h1></div><div className="app-shell__account">{user && <span>{user.email}</span>}<button type="button" onClick={() => void handleLogout()}>登出</button></div></>}
+      header={<><div><p className="section-label">Deadline / Organic planner</p><h1>DDL Radar</h1></div><div className="app-shell__account"><button type="button" onClick={() => setShowGuide(true)}>使用指南</button>{user && <span>{user.email}</span>}<button type="button" onClick={() => void handleLogout()}>登出</button></div></>}
       flow={<StepNavigation currentStep={currentStep} unlockedStep={unlockedStep} onStepChange={setCurrentStep} />}
       aside={<><section className="tasks-preview panel"><p className="section-label">Tasks</p><h2>本周 DDL</h2>{taskSummary.length ? taskSummary.map((task) => <div className="task-card" key={task.id}><p>{task.title}</p><small>剩余 {task.remainingMinutes / 60} 小时</small></div>) : <p>先保存可用时间，再录入课程任务。</p>}</section><section className="tasks-preview panel"><p className="section-label">Summary</p><strong>{taskSummary.length} 项已保存任务</strong></section></>}
     >
@@ -79,6 +81,7 @@ export function App() {
       {currentStep === 3 && <AnalysisStep analysis={analysis} tasks={tasks} loading={analysisLoading} error={analysisError} onBack={() => setCurrentStep(2)} onGenerate={generatePlan} />}
       {currentStep === 4 && plan && <PlanStep plan={plan} tasks={tasks} api={api} onTasksChanged={handleTasksChanged} />}
       {currentStep === 5 && <StatsDashboard api={api} />}
-    </AppShell>
-  </AuthGate>;
+</AppShell>
+      {showGuide && <UsageGuide onClose={() => setShowGuide(false)} />}
+    </AuthGate>;
 }
