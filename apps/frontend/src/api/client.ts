@@ -74,6 +74,19 @@ export type PlanResponse = {
 export type SchedulePatchInput = Partial<Pick<ScheduleBlock, "startAt" | "endAt" | "status" | "locked">> & { completedMinutes?: number; allowAfterDeadline?: boolean };
 export type SchedulePatchResponse = { block: ScheduleBlock; task?: Task; progress?: { remainingMinutes: number; appliedMinutes: number; overflowMinutes: number } };
 
+export type StatsResponse = {
+  taskSummary: {
+    activeCount: number;
+    completedCount: number;
+    overdueCount: number;
+    totalRemainingMinutes: number;
+    dueThisWeekCount: number;
+    completionRate: number;
+  };
+  priorityDistribution: Array<{ priority: Priority; count: number; remainingMinutes: number }>;
+  dailyWorkload: Array<{ date: string; scheduledMinutes: number; capacityMinutes: number }>;
+};
+
 export type ApiClient = {
   me(): Promise<{ user: User }>;
   register(input: { email: string; password: string }): Promise<{ user: User }>;
@@ -84,6 +97,7 @@ export type ApiClient = {
   listTasks(): Promise<Task[]>;
   createTask(input: CreateTaskInput): Promise<Task>;
   analyze(input: { planningDays: number; bufferRatio: number }): Promise<AnalysisResult>;
+  getStats(): Promise<StatsResponse>;
   createPlan(input: { planningDays: number; bufferRatio: number; allowRisk: boolean }): Promise<PlanResponse>;
   patchScheduleBlock(id: string, input: SchedulePatchInput): Promise<SchedulePatchResponse>;
   exportPlanIcs(id: string): Promise<{ blob: Blob; filename: string }>;
@@ -133,6 +147,7 @@ export function createApiClient({ baseUrl = "/api", fetcher = fetch }: { baseUrl
     analyze: (input) => request<AnalysisResult>(fetcher, `${baseUrl}/analysis`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
     }),
+    getStats: () => request<StatsResponse>(fetcher, `${baseUrl}/stats`),
     createPlan: (input) => request<PlanResponse>(fetcher, `${baseUrl}/plans`, {
       method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
     }),

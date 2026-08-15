@@ -6,6 +6,7 @@ import { AuthGate } from "../features/auth/AuthGate.js";
 import { AvailabilityStep } from "../features/availability/AvailabilityStep.js";
 import { AnalysisStep } from "../features/analysis/AnalysisStep.js";
 import { PlanStep } from "../features/plan/PlanStep.js";
+import { StatsDashboard } from "../features/stats/StatsDashboard.js";
 import { TaskStep } from "../features/tasks/TaskStep.js";
 
 export function App() {
@@ -19,7 +20,7 @@ export function App() {
   const [analysisError, setAnalysisError] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const hasActiveTasks = tasks.some((task) => task.status === "active");
-  const unlockedStep = plan ? 4 : hasAvailability && hasActiveTasks ? 3 : hasAvailability ? 2 : 1;
+  const unlockedStep = plan ? 5 : hasAvailability && hasActiveTasks ? 3 : hasAvailability ? 2 : 1;
   const handleTasksChanged = useCallback((nextTasks: readonly Task[]) => setTasks(nextTasks), []);
   const taskSummary = tasks.filter((task) => task.status === "active");
   const savedAvailability = useRef(false);
@@ -77,6 +78,7 @@ export function App() {
       {currentStep === 2 && <TaskStep api={api} onTasksChanged={handleTasksChanged} />}
       {currentStep === 3 && <AnalysisStep analysis={analysis} tasks={tasks} loading={analysisLoading} error={analysisError} onBack={() => setCurrentStep(2)} onGenerate={generatePlan} />}
       {currentStep === 4 && plan && <PlanStep plan={plan} tasks={tasks} api={api} onTasksChanged={handleTasksChanged} />}
+      {currentStep === 5 && <StatsDashboard api={api} />}
     </AppShell>
   </AuthGate>;
 }

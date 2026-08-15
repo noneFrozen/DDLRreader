@@ -220,3 +220,13 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-r
 .app-shell__account { display: flex; align-items: center; gap: var(--space-3); }
 .app-shell__account span { color: var(--color-text-accessible); font-size: .9rem; }
 .app-shell__account button { padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-fg); font-weight: 700; background: var(--color-surface); }
+
+.stats-dashboard { padding: var(--space-6); }
+.stats-dashboard h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 3vw, 2.7rem); line-height: 1.25; }
+.stats-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); margin-top: var(--space-5); }
+.stats-donut, .stats-bars { margin: var(--space-6) 0 0; }
+.stats-donut svg, .stats-bars svg { width: 100%; height: auto; }
+.stats-donut__legend, .stats-bars__legend { display: flex; flex-wrap: wrap; gap: var(--space-4); margin: var(--space-3) 0 0; color: var(--color-text-accessible); font-size: .9rem; }
+.stats-donut__legend span, .stats-bars__legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.stats-donut__legend i, .stats-bars__legend i { display: inline-block; width: 12px; height: 12px; border-radius: 4px; }
+@media (max-width: 767px) { .stats-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

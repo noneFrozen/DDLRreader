@@ -4,7 +4,7 @@ type StepNavigationProps = {
   onStepChange: (step: number) => void;
 };
 
-const steps = ["可用时间", "任务录入", "冲突分析", "生成计划"];
+const steps = ["可用时间", "任务录入", "冲突分析", "生成计划", "统计看板"];
 
 export function StepNavigation({ currentStep, unlockedStep = currentStep, onStepChange }: StepNavigationProps) {
   return (
