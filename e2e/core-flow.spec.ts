@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { register } from "./helpers.js";
 
 async function enterSampleAvailability(page: import("@playwright/test").Page) {
   await page.getByRole("checkbox", { name: "周一" }).check();
@@ -15,7 +16,7 @@ async function enterSampleTask(page: import("@playwright/test").Page, title: str
 }
 
 test("detects the sample shortage and generates a plan", async ({ page }) => {
-  await page.goto("/");
+  await register(page, "flow@example.com");
   await enterSampleAvailability(page);
 
   await enterSampleTask(page, "软件工程大作业", "2026-08-20T16:00", "4");

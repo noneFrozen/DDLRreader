@@ -130,6 +130,14 @@ DDL Radar 是面向大学生的个人截止日期冲突与工作量规划网页�
 **边界条件**：没有计划块时禁用导出；任务标题中的特殊字符正确转义。  
 **错误处理**：导出失败不影响已保存计划，并给出重试入口。
 
+### 5.7 认证与用户隔离模块
+
+**输入**：邮箱、密码。  
+**行为**：注册（校验邮箱格式、密码至少 8 位、邮箱唯一）与登录（scrypt 校验），成功后签发会话并种 `HttpOnly` Cookie；登出删除会话；`me` 返回当前用户。除 `register/login/logout/health` 外的所有端点通过 `onRequest` 中间件鉴权，未登录返回 401。  
+**输出**：用户信息与数据隔离（任务、可用时间、计划、统计均按 `user_id` 隔离）。  
+**边界条件**：重复邮箱返回 409；登录失败统一 401，不区分邮箱/密码错误；会话 7 天过期。  
+**错误处理**：字段校验错误与字段关联（`fieldErrors`）；受保护资源未登录返回 `{ code: "UNAUTHENTICATED" }`。
+
 ## 6. 系统架构
 
 采用 TypeScript 单体仓库，按领域边界分层，而不是把业务规则写进 React 组件。
@@ -155,6 +163,19 @@ Fastify API / Application Services
 数据流：用户输入 → API 验证 → 仓储保存 → 领域分析 → 计划生成 → 结果持久化 → UI 呈现/ICS 导出。
 
 ## 7. 数据模型
+
+### User
+
+- `id: UUID`
+- `email: string`，唯一，存储时小写
+- `passwordHash: string`，`salt:hash`（scrypt）
+- `createdAt`, `updatedAt`
+
+### Session
+
+- `id: string`，随机 token
+- `userId: UUID`
+- `createdAt`, `expiresAt`
 
 ### Course
 
@@ -222,7 +243,7 @@ Fastify API / Application Services
 - MVP 不使用 LLM、付费 API 或第三方鉴权，因此没有用户 API key 录入流程。
 - 部署平台令牌、registry 凭据等仅保存在 GitLab CI 受保护变量或部署平台密钥管理中，绝不进入仓库、日志或前端包。
 - 所有输入在 API 边界验证；下载文件头使用固定安全文件名规则；不渲染用户输入 HTML。
-- 单用户 MVP 不提供账户系统，公网演示使用独立演示数据，不保存敏感个人信息；README 明确这一边界。
+- 多用户账号系统：邮箱 + 密码注册登录，密码用 Node 内置 `crypto.scrypt` 加盐哈希（`salt:hash`），比较用 `timingSafeEqual`；会话 token 随机生成并存入 SQLite，Cookie 为 `HttpOnly + SameSite=Lax`，7 天过期。登录失败不泄露邮箱是否存在。公网演示使用独立演示数据，不保存敏感个人信息；README 明确这一边界。
 
 ### 可用性与无障碍
 
@@ -292,7 +313,7 @@ Fastify API / Application Services
 - **时区和夏令时**：统一 UTC 存储并使用 IANA 时区库；跨 DST 的集成测试必须覆盖。
 - **拖拽复杂度**：拖拽只是手工调整入口，键盘移动/编辑必须等价可用。
 - **部署存储**：选择支持持久卷的容器平台；不在无持久磁盘环境中承诺数据保留。
-- **身份范围**：MVP 明确为单用户，不在实现阶段临时加入登录、共享或权限系统。
+- **身份范围**：升级为多用户，每个用户的数据按 `user_id` 隔离；不在实现阶段加入共享、角色权限或第三方 OAuth。
 - **算法边界**：30 分钟粒度、10% 缓冲和稳定排序均为已确认规则，实现不得自行改成 AI 生成计划。
 
 ## 15. 已确认事项

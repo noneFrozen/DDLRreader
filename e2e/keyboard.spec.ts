@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
+import { register } from "./helpers.js";
 
 test("completes the full four-step workflow using only keyboard", async ({ page }) => {
-  await page.goto("/");
+  await register(page, "keyboard@example.com");
 
   // Step 1: Availability
   await page.getByRole("checkbox", { name: "周一" }).press("Space");

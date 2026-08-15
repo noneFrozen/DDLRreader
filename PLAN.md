@@ -1,8 +1,8 @@
-# DDL Radar Implementation Plan
+﻿# DDL Radar Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a deterministic university deadline-conflict planner that analyzes capacity, generates and replans 7–14 day schedules, exports ICS, and ships as an accessible Dockerized WebUI.
+**Goal:** Build a deterministic university deadline-conflict planner that analyzes capacity, generates and replans 7鈥?4 day schedules, exports ICS, and ships as an accessible Dockerized WebUI.
 
 **Architecture:** Use an npm-workspace TypeScript monorepo with a framework-independent domain package, a Fastify/SQLite backend, and a React/Vite frontend. Business rules live only in the domain package; the API coordinates validation and persistence; the UI implements the confirmed four-step Organic Productive workflow.
 
@@ -16,10 +16,10 @@
 - Frozen blocks during replanning are completed, started, or user-locked blocks.
 - All persisted timestamps are UTC ISO strings; display uses an IANA timezone.
 - MVP is single-user and uses no LLM, autonomous agent, paid API, or user API key.
-- UI design is B “Organic Productive”: `#E8EDDF` background, `#F7F8EE` surface, `#40543A` primary, three-column desktop workspace, responsive stacking, and risk icon + text + color.
+- UI design is B 鈥淥rganic Productive鈥? `#E8EDDF` background, `#F7F8EE` surface, `#40543A` primary, three-column desktop workspace, responsive stacking, and risk icon + text + color.
 - Body text and interactive controls target WCAG AA contrast; the complete four-step workflow must be keyboard operable.
 - Risk definitions and error behavior must match `SPEC.md`; implementations may not silently discard work minutes.
-- Every behavior change follows red–green–refactor and ends with a focused commit.
+- Every behavior change follows red鈥揼reen鈥搑efactor and ends with a focused commit.
 - `npm test` is the one-command test entry point; `.github/workflows/ci.yml` must contain a job named `unit-test`.
 - Do not add authentication, collaboration, school-system scraping, LLM planning, or third-party calendar mutation.
 
@@ -30,8 +30,7 @@
 Before merging implementation work, use a different agent type from the primary developer in a fresh session with only `SPEC.md` and `PLAN.md`.
 
 - [x] Create an isolated worktree `opencode-cold-start` from documentation commit `dd37792`.
-- [x] Ask a fresh OpenCode agent to implement Tasks 1–2 with the instruction: “Pause and ask when the documents are ambiguous; do not infer missing requirements.”
-- [x] Record every question, divergent interpretation, and resulting SPEC/PLAN correction in `SPEC_PROCESS.md`.
+- [x] Ask a fresh OpenCode agent to implement Tasks 1鈥? with the instruction: 鈥淧ause and ask when the documents are ambiguous; do not infer missing requirements.鈥?- [x] Record every question, divergent interpretation, and resulting SPEC/PLAN correction in `SPEC_PROCESS.md`.
 - [x] Review the validation worktree separately before reusing any implementation; preserve the original agent commits and record the human correction as its own commit.
 - [x] Commit documentation corrections before creating the real `codex/implementation` branch.
 
@@ -39,40 +38,40 @@ Before merging implementation work, use a different agent type from the primary 
 
 ```text
 .
-├── apps/
-│   ├── backend/
-│   │   ├── src/app.ts
-│   │   ├── src/server.ts
-│   │   ├── src/config.ts
-│   │   ├── src/db/{connection,migrate}.ts
-│   │   ├── src/repositories/{task,availability,plan}-repository.ts
-│   │   ├── src/routes/{tasks,availability,analysis,plans}.ts
-│   │   ├── src/services/ics.ts
-│   │   └── test/
-│   └── frontend/
-│       ├── src/app/App.tsx
-│       ├── src/api/client.ts
-│       ├── src/components/
-│       ├── src/features/{availability,tasks,analysis,plan}/
-│       ├── src/styles/{tokens,global}.css
-│       └── test/
-├── packages/
-│   └── domain/
-│       ├── src/{types,time,conflict,planner,replan,index}.ts
-│       └── test/
-├── e2e/core-flow.spec.ts
-├── scripts/check-required-docs.mjs
-├── Dockerfile
-├── .dockerignore
-├── .github/workflows/ci.yml
-├── package.json
-├── tsconfig.base.json
-├── SPEC.md
-├── PLAN.md
-├── SPEC_PROCESS.md
-├── AGENT_LOG.md
-├── README.md
-└── REFLECTION.md
+鈹溾攢鈹€ apps/
+鈹?  鈹溾攢鈹€ backend/
+鈹?  鈹?  鈹溾攢鈹€ src/app.ts
+鈹?  鈹?  鈹溾攢鈹€ src/server.ts
+鈹?  鈹?  鈹溾攢鈹€ src/config.ts
+鈹?  鈹?  鈹溾攢鈹€ src/db/{connection,migrate}.ts
+鈹?  鈹?  鈹溾攢鈹€ src/repositories/{task,availability,plan}-repository.ts
+鈹?  鈹?  鈹溾攢鈹€ src/routes/{tasks,availability,analysis,plans}.ts
+鈹?  鈹?  鈹溾攢鈹€ src/services/ics.ts
+鈹?  鈹?  鈹斺攢鈹€ test/
+鈹?  鈹斺攢鈹€ frontend/
+鈹?      鈹溾攢鈹€ src/app/App.tsx
+鈹?      鈹溾攢鈹€ src/api/client.ts
+鈹?      鈹溾攢鈹€ src/components/
+鈹?      鈹溾攢鈹€ src/features/{availability,tasks,analysis,plan}/
+鈹?      鈹溾攢鈹€ src/styles/{tokens,global}.css
+鈹?      鈹斺攢鈹€ test/
+鈹溾攢鈹€ packages/
+鈹?  鈹斺攢鈹€ domain/
+鈹?      鈹溾攢鈹€ src/{types,time,conflict,planner,replan,index}.ts
+鈹?      鈹斺攢鈹€ test/
+鈹溾攢鈹€ e2e/core-flow.spec.ts
+鈹溾攢鈹€ scripts/check-required-docs.mjs
+鈹溾攢鈹€ Dockerfile
+鈹溾攢鈹€ .dockerignore
+鈹溾攢鈹€ .github/workflows/ci.yml
+鈹溾攢鈹€ package.json
+鈹溾攢鈹€ tsconfig.base.json
+鈹溾攢鈹€ SPEC.md
+鈹溾攢鈹€ PLAN.md
+鈹溾攢鈹€ SPEC_PROCESS.md
+鈹溾攢鈹€ AGENT_LOG.md
+鈹溾攢鈹€ README.md
+鈹斺攢鈹€ REFLECTION.md
 ```
 
 ## Cross-Task Type Contracts
@@ -281,7 +280,7 @@ export async function buildApp() {
 
 - [ ] **Step 5: Create a minimal React build target**
 
-`App.tsx` renders `<h1>DDL Radar</h1>` and `<p>让截止日期变得可安排</p>`. Configure Vite and TypeScript without adding product behavior.
+`App.tsx` renders `<h1>DDL Radar</h1>` and `<p>璁╂埅姝㈡棩鏈熷彉寰楀彲瀹夋帓</p>`. Configure Vite and TypeScript without adding product behavior.
 
 - [ ] **Step 6: Verify the foundation**
 
@@ -493,7 +492,7 @@ Expected: FAIL because `analyzeConflicts` is missing.
 
 - [x] **Step 3: Implement cumulative deadline nodes**
 
-Group active tasks by identical deadline, sort deadlines ascending, and for each node calculate cumulative required blocks and unique available blocks ending no later than that deadline. Use `effectiveCapacityBlocks` before comparing. Convert block shortage to minutes with `BLOCK_MINUTES`; never round a shortage down. At the first conflicting deadline, `firstConflict.taskIds` contains every active task with remaining work whose deadline is no later than that node—not only tasks newly due at that exact time. Order those IDs deterministically by deadline ascending, priority rank `high > medium > low`, creation time ascending, then task ID ascending.
+Group active tasks by identical deadline, sort deadlines ascending, and for each node calculate cumulative required blocks and unique available blocks ending no later than that deadline. Use `effectiveCapacityBlocks` before comparing. Convert block shortage to minutes with `BLOCK_MINUTES`; never round a shortage down. At the first conflicting deadline, `firstConflict.taskIds` contains every active task with remaining work whose deadline is no later than that node鈥攏ot only tasks newly due at that exact time. Order those IDs deterministically by deadline ascending, priority rank `high > medium > low`, creation time ascending, then task ID ascending.
 
 - [x] **Step 4: Add failing risk-boundary tests**
 
@@ -536,7 +535,7 @@ git commit -m "feat(domain): analyze cumulative deadline conflicts"
 
 ### Task 4: Stable Schedule Generation
 
-**Depends on:** Tasks 2–3.  
+**Depends on:** Tasks 2鈥?.  
 **Can run in parallel with:** None.
 
 **Files:**
@@ -676,7 +675,7 @@ git commit -m "feat(domain): preserve user decisions during replanning"
 ### Task 6: SQLite Schema and Repository Contracts
 
 **Depends on:** Task 2.  
-**Can run in parallel with:** Tasks 3–5 in a separate worktree after shared types are committed.
+**Can run in parallel with:** Tasks 3鈥? in a separate worktree after shared types are committed.
 
 **Files:**
 - Modify: `apps/backend/package.json`
@@ -794,11 +793,11 @@ it("returns field errors instead of storing an invalid task", async () => {
   expect(response.statusCode).toBe(400);
   expect(response.json()).toEqual({
     code: "VALIDATION_ERROR",
-    message: "任务信息不完整",
+    message: "浠诲姟淇℃伅涓嶅畬鏁?,
     fieldErrors: {
-      title: "请输入任务名称",
-      deadline: "请输入有效截止时间",
-      remainingMinutes: "剩余工时不能为负数",
+      title: "璇疯緭鍏ヤ换鍔″悕绉?,
+      deadline: "璇疯緭鍏ユ湁鏁堟埅姝㈡椂闂?,
+      remainingMinutes: "鍓╀綑宸ユ椂涓嶈兘涓鸿礋鏁?,
     },
   });
 });
@@ -809,11 +808,11 @@ it("returns field errors instead of storing an invalid task", async () => {
 Run: `npm --workspace @ddl-radar/backend test -- tasks-api.test.ts`  
 Expected: FAIL with route not found.
 
-Use Fastify JSON Schema for shape validation and a service-level check for dependency cycles. Before persistence, normalize every positive `remainingMinutes` value upward with `toBlockCount(minutes) * BLOCK_MINUTES`; zero remains zero. Return the normalized stored task with 201, 404 with `{ code: "TASK_NOT_FOUND", message: "任务不存在" }`, and 409 for dependency cycles.
+Use Fastify JSON Schema for shape validation and a service-level check for dependency cycles. Before persistence, normalize every positive `remainingMinutes` value upward with `toBlockCount(minutes) * BLOCK_MINUTES`; zero remains zero. Return the normalized stored task with 201, 404 with `{ code: "TASK_NOT_FOUND", message: "浠诲姟涓嶅瓨鍦? }`, and 409 for dependency cycles.
 
 - [x] **Step 3: Write failing availability overlap tests**
 
-Send two overlapping Monday ranges and assert the stored response contains one merged interval. Send an end time equal to start time and assert 400 with field error `endLocalTime: "结束时间必须晚于开始时间"`.
+Send two overlapping Monday ranges and assert the stored response contains one merged interval. Send an end time equal to start time and assert 400 with field error `endLocalTime: "缁撴潫鏃堕棿蹇呴』鏅氫簬寮€濮嬫椂闂?`.
 
 - [x] **Step 4: Implement rule merge and exception override behavior**
 
@@ -837,7 +836,7 @@ git commit -m "feat(api): manage tasks and availability"
 
 ### Task 8: Analysis, Planning, Replanning, and ICS API
 
-**Depends on:** Tasks 3–7.  
+**Depends on:** Tasks 3鈥?.  
 **Can run in parallel with:** Task 9 after endpoint response types are committed.
 
 **Files:**
@@ -861,7 +860,7 @@ git commit -m "feat(api): manage tasks and availability"
 **Binding Task 8 contracts:**
 - Analysis and plan creation bodies use `{ planningDays: 7..14, bufferRatio?: number }`; plan creation additionally requires `allowRisk: boolean`. Derive `rangeEnd` by adding local calendar days in the stored IANA timezone to the injected clock time. Default `bufferRatio` is `0.1`.
 - Extend the domain-owned `TaskRepository` with `listPlanning(): Task[]`, returning active and completed tasks but excluding archived tasks. Construct one `PlanningInput`; include only dependency edges whose endpoints are in that task set. Analysis, planning, and replanning call domain functions and never duplicate their rules.
-- Upgrade SQLite to schema version 3. `schedule_blocks` uses `(plan_id, id)` as its composite primary key so frozen block IDs can survive across plan versions. Preserve existing rows and ordinals in the v2→v3 migration. Change `PlanRepository.updateBlock(planId, block)` accordingly; API block mutation targets the latest plan only.
+- Upgrade SQLite to schema version 3. `schedule_blocks` uses `(plan_id, id)` as its composite primary key so frozen block IDs can survive across plan versions. Preserve existing rows and ordinals in the v2鈫抳3 migration. Change `PlanRepository.updateBlock(planId, block)` accordingly; API block mutation targets the latest plan only.
 - `POST /api/plans` returns `{ plan, unscheduled, explanation, analysis }`. Reject red analysis with 409 `RISK_CONFIRMATION_REQUIRED` unless `allowRisk` is true. If resolved availability is empty, return 409 `NO_AVAILABILITY` even when risk is allowed. Plan IDs come from the injected ID factory; version is `latest.version + 1`; persist the sum of per-task unscheduled minutes.
 - `POST /api/plans/:id/replan` loads the requested plan, rejects 404 when absent, resolves availability from the injected current time through the stored `rangeEnd`, and passes `previousBlocks` to domain `replan`. It persists and returns a new plan ID/version while frozen block IDs and values remain unchanged. An expired range returns 409 `PLAN_RANGE_EXPIRED`.
 - `PATCH /api/schedule-blocks/:id` operates on the latest plan and accepts partial `{ startAt, endAt, status, locked, completedMinutes, allowAfterDeadline }`. Validate shape and UTC intervals. A move must be fully covered by resolved availability. Overlap with a locked sibling returns the exact documented 409 body; other overlaps return `SCHEDULE_CONFLICT` naming the conflicting block. Moving after the task deadline requires `allowAfterDeadline: true`.
@@ -887,7 +886,7 @@ Expected: FAIL with route not found.
 
 Load tasks and the `AvailabilityDefinition` through repositories, resolve it through the Task 7 application service, construct one `PlanningInput`, and call domain functions without duplicating risk rules. `POST /api/plans` requires `{ allowRisk: boolean }`; reject red analysis with 409 unless `allowRisk` is true. Persist `unscheduledMinutes` alongside the plan response.
 
-Before route orchestration, write repository RED tests for `listPlanning`, composite schedule-block identities across plan versions, and the v2→v3 data-preserving migration. Then implement the schema/repository changes above.
+Before route orchestration, write repository RED tests for `listPlanning`, composite schedule-block identities across plan versions, and the v2鈫抳3 data-preserving migration. Then implement the schema/repository changes above.
 
 - [x] **Step 3: Write and satisfy move-conflict tests**
 
@@ -896,7 +895,7 @@ Assert moving a block over a locked block returns 409:
 ```json
 {
   "code": "SCHEDULE_CONFLICT",
-  "message": "该时间与已锁定安排冲突",
+  "message": "璇ユ椂闂翠笌宸查攣瀹氬畨鎺掑啿绐?,
   "details": { "conflictingBlockId": "locked-1" }
 }
 ```
@@ -908,7 +907,7 @@ Also cover unavailable-time moves, after-deadline confirmation, progress overflo
 - [x] **Step 4: Write a failing ICS escaping and UID test**
 
 ```ts
-expect(ics).toContain("SUMMARY:软件工程\\,大作业");
+expect(ics).toContain("SUMMARY:杞欢宸ョ▼\\,澶т綔涓?);
 expect(ics).toContain("UID:block-1@ddl-radar.local");
 expect(exportAgain).toContain("UID:block-1@ddl-radar.local");
 expect(ics).toContain("TZID=Asia/Shanghai");
@@ -935,7 +934,7 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 ### Task 9: Organic Productive Design System and Responsive Shell
 
 **Depends on:** Task 1 and confirmed Open Design prototype.  
-**Can run in parallel with:** Tasks 6–8.
+**Can run in parallel with:** Tasks 6鈥?.
 
 **Files:**
 - Modify: `apps/frontend/package.json`
@@ -956,10 +955,10 @@ git commit -m "feat(api): expose analysis plans and calendar export"
 
 **Binding Task 9 contracts:**
 - Install `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`, and `jsdom` as frontend dev dependencies; add a jsdom Vitest test script/setup and update the root lockfile. No remote font, image, icon, or runtime dependency is allowed.
-- Implement only the confirmed B “Organic Productive” direction from the Open Design prototype: sage/mist background, translucent warm-white panels, dark botanical green, muted green text, soft green borders, and low-saturation brick/warm-yellow/plant-green risk colors. Preserve the prototype's OKLCH values with hex fallbacks.
+- Implement only the confirmed B 鈥淥rganic Productive鈥?direction from the Open Design prototype: sage/mist background, translucent warm-white panels, dark botanical green, muted green text, soft green borders, and low-saturation brick/warm-yellow/plant-green risk colors. Preserve the prototype's OKLCH values with hex fallbacks.
 - Tokens cover the six base colors, three risk colors, 18/20/22px organic radii, 44px minimum controls, focus ring, two shadows, spacing scale, display/body/mono system font stacks, and 180ms motion with `prefers-reduced-motion` fallback.
-- `AppShell` exposes semantic header, flow navigation, main workspace, and task/summary aside slots. Desktop is exactly `220px minmax(0, 1fr) 300px`; tablet is two columns with the aside spanning; mobile is one column ordered flow → main → aside and has no horizontal overflow.
-- Initial shell demo is the confirmed conflict-analysis state, not an A/B selector: heading `DDL Radar`, current step `冲突分析`, visible `高风险`, concise 2.5-hour conflict copy, and compact task/summary preview. Future unavailable steps are actual disabled buttons; completed/current steps remain keyboard reachable.
+- `AppShell` exposes semantic header, flow navigation, main workspace, and task/summary aside slots. Desktop is exactly `220px minmax(0, 1fr) 300px`; tablet is two columns with the aside spanning; mobile is one column ordered flow 鈫?main 鈫?aside and has no horizontal overflow.
+- Initial shell demo is the confirmed conflict-analysis state, not an A/B selector: heading `DDL Radar`, current step `鍐茬獊鍒嗘瀽`, visible `楂橀闄ー, concise 2.5-hour conflict copy, and compact task/summary preview. Future unavailable steps are actual disabled buttons; completed/current steps remain keyboard reachable.
 
 - [x] **Step 1: Install the frontend test harness and write the failing accessibility test**
 
@@ -968,9 +967,9 @@ Add `"test": "vitest run"` to `apps/frontend/package.json` in the same change th
 ```tsx
 render(<App />);
 expect(screen.getByRole("heading", { name: "DDL Radar" })).toBeVisible();
-expect(screen.getByRole("navigation", { name: "规划步骤" })).toBeVisible();
-expect(screen.getByText("高风险")).toHaveAccessibleName(/高风险/);
-expect(screen.getByRole("button", { name: "冲突分析" })).toHaveAttribute("aria-current", "step");
+expect(screen.getByRole("navigation", { name: "瑙勫垝姝ラ" })).toBeVisible();
+expect(screen.getByText("楂橀闄?)).toHaveAccessibleName(/楂橀闄?);
+expect(screen.getByRole("button", { name: "鍐茬獊鍒嗘瀽" })).toHaveAttribute("aria-current", "step");
 ```
 
 - [x] **Step 2: Run and confirm red**
@@ -980,7 +979,7 @@ Expected: FAIL because the shell components do not exist.
 
 - [x] **Step 3: Implement tokens and the three-column shell**
 
-Define exact CSS custom properties for the six confirmed colors, 18/20/22px radii, focus ring, shadows, spacing, body/display fonts, and muted risk colors. Use CSS Grid with desktop columns `220px minmax(0, 1fr) 300px`, two columns at 768–1023px, and one column below 768px.
+Define exact CSS custom properties for the six confirmed colors, 18/20/22px radii, focus ring, shadows, spacing, body/display fonts, and muted risk colors. Use CSS Grid with desktop columns `220px minmax(0, 1fr) 300px`, two columns at 768鈥?023px, and one column below 768px.
 
 - [x] **Step 4: Implement semantic navigation and risk badge**
 
@@ -1022,7 +1021,7 @@ git commit -m "feat(ui): establish Organic Productive workspace"
 - `apps/frontend/src/api/client.ts` exports a small typed client whose base URL defaults to same-origin `/api` and whose factory accepts an injected `fetch` for tests. Non-2xx JSON errors surface `message` and `fieldErrors` without throwing away server field names.
 - Availability UI may show the simplified PLAN assertion, but the actual `PUT /api/availability` payload must match Task 7 exactly: top-level `{ timezone, weeklyRules, exceptions }`; each weekly rule includes stable local `id`, `weekday`, `startLocalTime`, `endLocalTime`, and rule `timezone`. Use the selected top-level timezone for new weekly rules. Start with `exceptions: []`.
 - Browser timezone initializes the select when available; tests may run in jsdom and must still default deterministically to `Asia/Shanghai` when the browser timezone is unavailable or not in the built-in option set. Include at least `Asia/Shanghai`, `Asia/Tokyo`, `Europe/London`, and `America/New_York`.
-- Task creation calls `POST /api/tasks` with `courseId: null` unless the backend later gains a course API. The “course fixtures” in this task are local UI labels/colors only; do not invent course persistence or a `/api/courses` endpoint.
+- Task creation calls `POST /api/tasks` with `courseId: null` unless the backend later gains a course API. The 鈥渃ourse fixtures鈥?in this task are local UI labels/colors only; do not invent course persistence or a `/api/courses` endpoint.
 - Deadline input is local date/time in the UI and is converted to an ISO UTC instant before API submission. Numeric hours are converted to integer minutes using `Math.round(hours * 60)` before sending; backend block rounding remains authoritative after persistence.
 - `TaskStep` owns the local task list returned from API calls and passes it to `TaskForm`; dependency choices are rendered from existing active tasks and must exclude the task currently being created/edited.
 - App navigation unlocks step 2 after a saved availability interval, unlocks step 3 only when there is at least one saved active task and at least one saved availability interval, and keeps disabled future steps as actual disabled buttons.
@@ -1030,10 +1029,10 @@ git commit -m "feat(ui): establish Organic Productive workspace"
 - [x] **Step 1: Write the failing availability submission test**
 
 ```tsx
-await user.click(screen.getByRole("checkbox", { name: "周一" }));
-await user.type(screen.getByLabelText("开始时间"), "18:00");
-await user.type(screen.getByLabelText("结束时间"), "21:00");
-await user.click(screen.getByRole("button", { name: "保存可用时间" }));
+await user.click(screen.getByRole("checkbox", { name: "鍛ㄤ竴" }));
+await user.type(screen.getByLabelText("寮€濮嬫椂闂?), "18:00");
+await user.type(screen.getByLabelText("缁撴潫鏃堕棿"), "21:00");
+await user.click(screen.getByRole("button", { name: "淇濆瓨鍙敤鏃堕棿" }));
 expect(fakeApi.putAvailability).toHaveBeenCalledWith(expect.objectContaining({
   timezone: "Asia/Shanghai",
   weeklyRules: [{ weekday: 1, startLocalTime: "18:00", endLocalTime: "21:00" }],
@@ -1049,7 +1048,7 @@ Render browser timezone as the default but allow an IANA timezone select. Associ
 
 - [x] **Step 3: Write the failing three-task flow test**
 
-Enter “软件工程大作业”, Friday 23:59, 12 hours, high priority; submit and assert the row exposes the title, deadline, `剩余 12 小时`, and `优先级高`. Repeat through a parameterized test for math and English fixtures.
+Enter 鈥滆蒋浠跺伐绋嬪ぇ浣滀笟鈥? Friday 23:59, 12 hours, high priority; submit and assert the row exposes the title, deadline, `鍓╀綑 12 灏忔椂`, and `浼樺厛绾ч珮`. Repeat through a parameterized test for math and English fixtures.
 
 - [x] **Step 4: Implement task form and list**
 
@@ -1071,7 +1070,7 @@ git commit -m "feat(ui): capture availability and course tasks"
 
 ### Task 11: Conflict, Plan, Progress, and Export UI
 
-**Depends on:** Tasks 8–10.  
+**Depends on:** Tasks 8鈥?0.  
 **Can run in parallel with:** None.
 
 **Files:**
@@ -1090,9 +1089,9 @@ git commit -m "feat(ui): capture availability and course tasks"
 
 **Binding Task 11 contracts:**
 - Extend `apps/frontend/src/api/client.ts` with typed methods for `POST /api/analysis`, `POST /api/plans`, `PATCH /api/schedule-blocks/:id`, and `GET /api/plans/:id/export.ics`. Keep injected fetch support; for ICS return `{ blob, filename }`, parsing `content-disposition` and defaulting to `ddl-radar-plan.ics`.
-- Analysis requests use `{ planningDays: 7, bufferRatio: 0.1 }` by default. Create-plan requests use the same planning inputs plus `allowRisk`. A red analysis shows “生成尽力计划” and opens a confirmation dialog before sending `allowRisk: true`; yellow/green show “生成可执行计划” and send without the red confirmation.
+- Analysis requests use `{ planningDays: 7, bufferRatio: 0.1 }` by default. Create-plan requests use the same planning inputs plus `allowRisk`. A red analysis shows 鈥滅敓鎴愬敖鍔涜鍒掆€?and opens a confirmation dialog before sending `allowRisk: true`; yellow/green show 鈥滅敓鎴愬彲鎵ц璁″垝鈥?and send without the red confirmation.
 - Incomplete analysis renders every `issues[]` item as visible text and does not render a generation button. Ready analysis renders risk, nodes, first conflict shortage, and involved task titles by mapping `taskIds` through the saved task list.
-- `PlanStep` receives the latest plan response and current tasks. Schedule blocks are grouped by local day headings. Buttons expose task title, time range, status, and locked state; toggling lock calls `PATCH /api/schedule-blocks/:id` with `{ locked: true|false }` and updates the accessible label to include `已锁定` when true.
+- `PlanStep` receives the latest plan response and current tasks. Schedule blocks are grouped by local day headings. Buttons expose task title, time range, status, and locked state; toggling lock calls `PATCH /api/schedule-blocks/:id` with `{ locked: true|false }` and updates the accessible label to include `宸查攣瀹歚 when true.
 - Completing progress uses `PATCH /api/schedule-blocks/:id` with `{ completedMinutes: 60 }`, updates the returned block/task state, and keeps overflow/progress messages visible.
 - Keyboard movement is implemented with start/end datetime controls for each block, not pointer-only drag. If the PATCH returns `409 SCHEDULE_CONFLICT`, restore the previous displayed times and show the conflicting block's task title by resolving `details.conflictingBlockId` against the current plan. If the conflict cannot be resolved, show the server message.
 - Display `plan.unscheduledMinutes` in a persistent warning panel whenever it is greater than 0. Do not remove the availability/task entry steps; users must be able to go back and edit inputs.
@@ -1101,11 +1100,11 @@ git commit -m "feat(ui): capture availability and course tasks"
 
 ```tsx
 render(<AnalysisStep analysis={redAnalysisFixture} />);
-expect(screen.getByRole("status")).toHaveTextContent("周四前缺少 2.5 小时可用时间");
-expect(screen.getByText("软件工程大作业")).toBeVisible();
-expect(screen.getByText("高风险")).toBeVisible();
-expect(screen.getByRole("button", { name: "返回修改" })).toBeEnabled();
-expect(screen.getByRole("button", { name: "生成尽力计划" })).toBeEnabled();
+expect(screen.getByRole("status")).toHaveTextContent("鍛ㄥ洓鍓嶇己灏?2.5 灏忔椂鍙敤鏃堕棿");
+expect(screen.getByText("杞欢宸ョ▼澶т綔涓?)).toBeVisible();
+expect(screen.getByText("楂橀闄?)).toBeVisible();
+expect(screen.getByRole("button", { name: "杩斿洖淇敼" })).toBeEnabled();
+expect(screen.getByRole("button", { name: "鐢熸垚灏藉姏璁″垝" })).toBeEnabled();
 ```
 
 - [x] **Step 2: Run red, then implement ready/incomplete/risk states**
@@ -1113,15 +1112,15 @@ expect(screen.getByRole("button", { name: "生成尽力计划" })).toBeEnabled()
 Run: `npm --workspace @ddl-radar/frontend test -- analysis-step.test.tsx`  
 Expected: FAIL because analysis components are missing.
 
-Incomplete analysis shows each issue and no generation button. Red analysis requires a confirmation dialog before sending `{ allowRisk: true }`. Yellow and green use “生成可执行计划”.
+Incomplete analysis shows each issue and no generation button. Red analysis requires a confirmation dialog before sending `{ allowRisk: true }`. Yellow and green use 鈥滅敓鎴愬彲鎵ц璁″垝鈥?
 
 - [x] **Step 3: Write failing plan interaction tests**
 
-Assert completing 60 minutes calls the progress endpoint, locking a block changes its accessible label to “已锁定”, a 409 move response restores the original position and displays the conflicting block title, and an ICS action uses the server-provided blob and filename.
+Assert completing 60 minutes calls the progress endpoint, locking a block changes its accessible label to 鈥滃凡閿佸畾鈥? a 409 move response restores the original position and displays the conflicting block title, and an ICS action uses the server-provided blob and filename.
 
 - [x] **Step 4: Implement week timeline without mouse-only behavior**
 
-Render days as headings and schedule blocks as buttons. Provide keyboard-accessible “移动时间” fields in addition to pointer dragging. Use the low-saturation risk palette and course colors; preserve readable text contrast. Display unscheduled minutes in a persistent warning panel.
+Render days as headings and schedule blocks as buttons. Provide keyboard-accessible 鈥滅Щ鍔ㄦ椂闂粹€?fields in addition to pointer dragging. Use the low-saturation risk palette and course colors; preserve readable text contrast. Display unscheduled minutes in a persistent warning panel.
 
 - [x] **Step 5: Verify and commit**
 
@@ -1139,7 +1138,7 @@ git commit -m "feat(ui): analyze conflicts and manage generated plans"
 
 ### Task 12: End-to-End, Accessibility, and Performance Gates
 
-**Depends on:** Tasks 1–11.  
+**Depends on:** Tasks 1鈥?1.  
 **Can run in parallel with:** Initial documentation drafting in Task 14, but not final verification.
 
 **Files:**
@@ -1160,11 +1159,11 @@ test("detects the sample shortage and generates a plan", async ({ page }) => {
   await page.goto("/");
   await enterSampleAvailability(page);
   await enterSampleTasks(page);
-  await page.getByRole("button", { name: "冲突分析" }).click();
-  await expect(page.getByRole("status")).toContainText("周四前缺少 2.5 小时可用时间");
-  await page.getByRole("button", { name: "生成尽力计划" }).click();
-  await page.getByRole("button", { name: "仍然生成" }).click();
-  await expect(page.getByRole("heading", { name: "未来 7 天计划" })).toBeVisible();
+  await page.getByRole("button", { name: "鍐茬獊鍒嗘瀽" }).click();
+  await expect(page.getByRole("status")).toContainText("鍛ㄥ洓鍓嶇己灏?2.5 灏忔椂鍙敤鏃堕棿");
+  await page.getByRole("button", { name: "鐢熸垚灏藉姏璁″垝" }).click();
+  await page.getByRole("button", { name: "浠嶇劧鐢熸垚" }).click();
+  await expect(page.getByRole("heading", { name: "鏈潵 7 澶╄鍒? })).toBeVisible();
 });
 ```
 
@@ -1268,7 +1267,7 @@ git commit -m "ci: add GitHub Actions and container smoke test"
 
 ### Task 14: Required Documentation and Process Evidence
 
-**Depends on:** PLAN approval; update throughout Tasks 1–13 and finalize after Task 13.  
+**Depends on:** PLAN approval; update throughout Tasks 1鈥?3 and finalize after Task 13.  
 **Can run in parallel with:** Implementation, provided factual entries are added only after their events occur.
 
 **Files:**
@@ -1289,9 +1288,9 @@ git commit -m "ci: add GitHub Actions and container smoke test"
 import { readFileSync } from "node:fs";
 
 const requirements = {
-  "README.md": ["项目简介", "安装", "运行", "分发", "目录结构", "安全边界", "已知限制"],
-  "SPEC_PROCESS.md": ["brainstorming 关键节点", "关键迭代", "冷启动验证", "修订前后"],
-  "AGENT_LOG.md": ["时间", "Task", "Superpowers", "人工干预", "commit"],
+  "README.md": ["椤圭洰绠€浠?, "瀹夎", "杩愯", "鍒嗗彂", "鐩綍缁撴瀯", "瀹夊叏杈圭晫", "宸茬煡闄愬埗"],
+  "SPEC_PROCESS.md": ["brainstorming 鍏抽敭鑺傜偣", "鍏抽敭杩唬", "鍐峰惎鍔ㄩ獙璇?, "淇鍓嶅悗"],
+  "AGENT_LOG.md": ["鏃堕棿", "Task", "Superpowers", "浜哄伐骞查", "commit"],
 };
 
 for (const [file, headings] of Object.entries(requirements)) {
@@ -1315,7 +1314,7 @@ Include the exact tested `docker build`, `docker run`, local npm commands, data 
 
 - [ ] **Step 4: Reserve REFLECTION for the student**
 
-Create headings only after the student begins their own 1500–2500 Chinese-character reflection. The agent may report factual commit/CI evidence or polish user-authored wording, but must not author the reflection content because the course explicitly forbids AI ghostwriting.
+Create headings only after the student begins their own 1500鈥?500 Chinese-character reflection. The agent may report factual commit/CI evidence or polish user-authored wording, but must not author the reflection content because the course explicitly forbids AI ghostwriting.
 
 - [ ] **Step 5: Run documentation and repository safety checks**
 
@@ -1344,17 +1343,17 @@ Commit `REFLECTION.md` separately only after the student confirms it is their ow
 
 ```text
 Cold-start gate
-  └─ Task 1 → Task 2 → Task 3 → Task 4 → Task 5
-                   └──────────→ Task 6 → Task 7 → Task 8
-          Task 1 ─────────────→ Task 9 → Task 10
-                                      Task 8 + Task 10 → Task 11
-                                      Task 11 → Task 12 → Task 13
+  鈹斺攢 Task 1 鈫?Task 2 鈫?Task 3 鈫?Task 4 鈫?Task 5
+                   鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈫?Task 6 鈫?Task 7 鈫?Task 8
+          Task 1 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈫?Task 9 鈫?Task 10
+                                      Task 8 + Task 10 鈫?Task 11
+                                      Task 11 鈫?Task 12 鈫?Task 13
           Documentation Task 14 runs alongside verified milestones
 ```
 
-- Safe parallel pair after Task 2: domain Tasks 3–5 sequential in one worktree, persistence Task 6 in another.
+- Safe parallel pair after Task 2: domain Tasks 3鈥? sequential in one worktree, persistence Task 6 in another.
 - Safe parallel pair after Task 7: backend Task 8 and frontend Task 9.
-- Tasks 10–13 are integration-heavy and should run sequentially.
+- Tasks 10鈥?3 are integration-heavy and should run sequentially.
 - Each worktree maps to one PR; every PR receives spec-compliance review before code-quality review.
 
 ## Final Verification Checklist
@@ -1371,3 +1370,15 @@ Cold-start gate
 - [ ] Credential scan returns no matches and Git history contains no real credentials.
 - [ ] `PLAN.md` records each completed task and commit hash.
 - [ ] Final code review reports no unresolved critical or important issue.
+
+---
+
+
+## Appendix: Multi-User Account System (Post-MVP Enhancement)
+
+Added after the original 14 tasks, per user request. See docs/superpowers/specs/2026-08-15-auth-design.md and docs/superpowers/plans/2026-08-15-auth.md.
+
+- [x] **Auth Task 1-3**: migration v4, user/session repositories, scoped repositories, scrypt service, auth routes + middleware, business-route isolation - commit 7e058d4
+- [x] **Auth Task 4**: frontend AuthGate + login/register forms + logout - commit 0a3e76f
+- [x] **Auth Task 5**: e2e + README/SPEC/PLAN documentation
+
