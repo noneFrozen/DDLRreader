@@ -211,3 +211,12 @@ button:focus-visible, a:focus-visible { outline: none; box-shadow: var(--focus-r
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
 }
+
+.auth-gate { max-width: 440px; margin: 10vh auto; padding: var(--space-6); }
+.auth-gate h2 { margin: 0; font-family: var(--font-display); font-size: clamp(1.9rem, 3vw, 2.6rem); line-height: 1.25; }
+.auth-gate > p:not(.section-label):not(.field-error) { margin: var(--space-2) 0 0; color: var(--color-text-accessible); }
+.auth-form { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+.auth-switch { margin-top: var(--space-4); padding: 0; border: none; color: var(--color-accent); background: none; font-weight: 700; }
+.app-shell__account { display: flex; align-items: center; gap: var(--space-3); }
+.app-shell__account span { color: var(--color-text-accessible); font-size: .9rem; }
+.app-shell__account button { padding: 8px 14px; border: 1px solid var(--color-border); border-radius: 999px; color: var(--color-fg); font-weight: 700; background: var(--color-surface); }

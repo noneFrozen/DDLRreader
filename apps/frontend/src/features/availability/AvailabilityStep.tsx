@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ApiClient, AvailabilityDefinition, AvailabilityRule } from "../../api/client.js";
 
 const timezones = ["Asia/Shanghai", "Asia/Tokyo", "Europe/London", "America/New_York"];
@@ -25,7 +25,7 @@ function serverErrors(error: unknown): Record<string, string> {
 }
 
 type AvailabilityStepProps = {
-  api: Pick<ApiClient, "putAvailability">;
+  api: Pick<ApiClient, "putAvailability" | "getAvailability">;
   onSaved: (availability: AvailabilityDefinition) => void;
 };
 
@@ -35,6 +35,20 @@ export function AvailabilityStep({ api, onSaved }: AvailabilityStepProps) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const selectedDays = useMemo(() => new Set(rules.map((rule) => rule.weekday)), [rules]);
+
+  useEffect(() => {
+    let mounted = true;
+    void api.getAvailability().then((definition) => {
+      if (!mounted) return;
+      if (definition.weeklyRules.length > 0) {
+        setTimezone(definition.timezone);
+        setRules(definition.weeklyRules.map((rule) => ({
+          id: rule.id, weekday: rule.weekday, startLocalTime: rule.startLocalTime, endLocalTime: rule.endLocalTime, timezone: rule.timezone,
+        })));
+      }
+    }).catch(() => {});
+    return () => { mounted = false; };
+  }, [api]);
 
   const setDay = (weekday: number, checked: boolean) => {
     setRules((current) => checked

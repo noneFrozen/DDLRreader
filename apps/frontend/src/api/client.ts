@@ -1,5 +1,7 @@
 export type Priority = "low" | "medium" | "high";
 
+export type User = { id: string; email: string; createdAt: string; updatedAt: string };
+
 export type AvailabilityRule = {
   id: string;
   weekday: number;
@@ -73,6 +75,10 @@ export type SchedulePatchInput = Partial<Pick<ScheduleBlock, "startAt" | "endAt"
 export type SchedulePatchResponse = { block: ScheduleBlock; task?: Task; progress?: { remainingMinutes: number; appliedMinutes: number; overflowMinutes: number } };
 
 export type ApiClient = {
+  me(): Promise<{ user: User }>;
+  register(input: { email: string; password: string }): Promise<{ user: User }>;
+  login(input: { email: string; password: string }): Promise<{ user: User }>;
+  logout(): Promise<{ status: string }>;
   getAvailability(): Promise<AvailabilityDefinition>;
   putAvailability(input: AvailabilityDefinition): Promise<AvailabilityDefinition>;
   listTasks(): Promise<Task[]>;
@@ -104,6 +110,14 @@ function filenameFromDisposition(value: string | null): string {
 
 export function createApiClient({ baseUrl = "/api", fetcher = fetch }: { baseUrl?: string; fetcher?: FetchLike } = {}): ApiClient {
   return {
+    me: () => request<{ user: User }>(fetcher, `${baseUrl}/auth/me`),
+    register: (input) => request<{ user: User }>(fetcher, `${baseUrl}/auth/register`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+    }),
+    login: (input) => request<{ user: User }>(fetcher, `${baseUrl}/auth/login`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+    }),
+    logout: () => request<{ status: string }>(fetcher, `${baseUrl}/auth/logout`, { method: "POST" }),
     getAvailability: () => request<AvailabilityDefinition>(fetcher, `${baseUrl}/availability`),
     putAvailability: (input) => request<AvailabilityDefinition>(fetcher, `${baseUrl}/availability`, {
       method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(input),

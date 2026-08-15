@@ -8,7 +8,7 @@ describe("AvailabilityStep", () => {
 
   it("saves selected weekly availability with the selected timezone", async () => {
     const user = userEvent.setup();
-    const fakeApi = { putAvailability: vi.fn().mockResolvedValue(undefined) };
+    const fakeApi = { getAvailability: vi.fn().mockResolvedValue({ timezone: "Asia/Shanghai", weeklyRules: [], exceptions: [] }), putAvailability: vi.fn().mockResolvedValue(undefined) };
 
     render(<AvailabilityStep api={fakeApi} onSaved={() => undefined} />);
 
@@ -33,7 +33,7 @@ describe("AvailabilityStep", () => {
   it("falls back to Asia/Shanghai when browser timezone lookup throws", () => {
     vi.spyOn(Intl, "DateTimeFormat").mockImplementation(() => { throw new Error("timezone unavailable"); });
 
-    render(<AvailabilityStep api={{ putAvailability: vi.fn() }} onSaved={() => undefined} />);
+    render(<AvailabilityStep api={{ getAvailability: vi.fn().mockResolvedValue({ timezone: "Asia/Shanghai", weeklyRules: [], exceptions: [] }), putAvailability: vi.fn() }} onSaved={() => undefined} />);
 
     expect(screen.getByLabelText("时区")).toHaveValue("Asia/Shanghai");
   });
@@ -41,7 +41,7 @@ describe("AvailabilityStep", () => {
   it("announces unrendered server field errors", async () => {
     const user = userEvent.setup();
     const failure = Object.assign(new Error("可用时间信息不完整"), { fieldErrors: { weeklyRules: "时间段不合法" } });
-    render(<AvailabilityStep api={{ putAvailability: vi.fn().mockRejectedValue(failure) }} onSaved={() => undefined} />);
+    render(<AvailabilityStep api={{ getAvailability: vi.fn().mockResolvedValue({ timezone: "Asia/Shanghai", weeklyRules: [], exceptions: [] }), putAvailability: vi.fn().mockRejectedValue(failure) }} onSaved={() => undefined} />);
 
     await user.click(screen.getByRole("checkbox", { name: "周一" }));
     await user.type(screen.getByLabelText("开始时间"), "18:00");
