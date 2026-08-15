@@ -100,6 +100,8 @@ export type ApiClient = {
   getStats(): Promise<StatsResponse>;
   createPlan(input: { planningDays: number; bufferRatio: number; allowRisk: boolean }): Promise<PlanResponse>;
   patchScheduleBlock(id: string, input: SchedulePatchInput): Promise<SchedulePatchResponse>;
+  splitScheduleBlock(id: string, at?: string): Promise<{ blocks: ScheduleBlock[] }>;
+  mergeScheduleBlock(id: string, withDirection?: "next" | "prev"): Promise<{ block: ScheduleBlock }>;
   exportPlanIcs(id: string): Promise<{ blob: Blob; filename: string }>;
 };
 
@@ -153,6 +155,12 @@ export function createApiClient({ baseUrl = "/api", fetcher = fetch }: { baseUrl
     }),
     patchScheduleBlock: (id, input) => request<SchedulePatchResponse>(fetcher, `${baseUrl}/schedule-blocks/${encodeURIComponent(id)}`, {
       method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(input),
+    }),
+    splitScheduleBlock: (id, at) => request<{ blocks: ScheduleBlock[] }>(fetcher, `${baseUrl}/schedule-blocks/${encodeURIComponent(id)}/split`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(at ? { at } : {}),
+    }),
+    mergeScheduleBlock: (id, withDirection) => request<{ block: ScheduleBlock }>(fetcher, `${baseUrl}/schedule-blocks/${encodeURIComponent(id)}/merge`, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(withDirection ? { withDirection } : {}),
     }),
     exportPlanIcs: async (id) => {
       const response = await fetcher(`${baseUrl}/plans/${encodeURIComponent(id)}/export.ics`);
